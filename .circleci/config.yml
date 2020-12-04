@@ -1,0 +1,118 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@1.3.1
+
+workdir: &workdir /tmp/woodchuck
+
+cache_key: &cache_key repo-cache-{{ .Branch }}-{{ .Revision }}
+
+save_extension_cache: &save_extension_cache
+  save_cache:
+    name: "Saving repository cache for {{ .Branch }} {{ .Revision }}"
+    key: *cache_key
+    paths:
+      - extensions
+
+restore_extension_cache: &restore_extension_cache
+  restore_cache:
+    keys:
+      - *cache_key
+
+commands:
+  deploy_extension_to_region:
+    parameters:
+      region:
+        type: string
+      extension:
+        default: "woodchuck"
+        type: string
+    steps:
+      - run:
+          name: deploy <<parameters.region>>
+          command: |
+            RESULT=$(aws lambda publish-layer-version --layer-name <<parameters.extension>> --zip-file "fileb://extensions.zip" --region <<parameters.region>>)
+            VERSION=$(echo $RESULT | jq '.Version')
+            aws lambda add-layer-version-permission --layer-name <<parameters.extension>> --region <<parameters.region>> --statement-id "public-layer" --version-number $VERSION --action lambda:GetLayerVersion --principal '*'
+
+jobs:
+  test:
+    working_directory: *workdir
+    docker:
+      - image: ekidd/rust-musl-builder:latest
+    steps:
+      - attach_workspace:
+          at: *workdir
+      - checkout
+      - run:
+          name: test
+          command: |
+            cargo test
+  build:
+    working_directory: *workdir
+    parameters:
+      destination:
+        type: string
+    docker:
+      - image: ekidd/rust-musl-builder:latest
+    steps:
+      - attach_workspace:
+          at: *workdir
+      - checkout
+      - run:
+          name: build
+          command: |
+            cargo build --features <<parameters.destination>> --release &&
+            mkdir extensions &&
+            cp target/x86_64-unknown-linux-musl/release/woodchuck extensions/woodchuck
+      - *save_extension_cache
+
+  deploy:
+    working_directory: *workdir
+    executor: aws-cli/default
+    steps:
+      - attach_workspace:
+          at: *workdir
+      - *restore_extension_cache
+      - aws-cli/setup
+      - run:
+          name: package
+          command: |
+            zip -r extensions.zip extensions
+      - deploy_extension_to_region:
+          region: "eu-west-1"
+      - deploy_extension_to_region:
+          region: "eu-west-2"
+      - deploy_extension_to_region:
+          region: "eu-west-3"
+      - deploy_extension_to_region:
+          region: "eu-central-1"
+      - deploy_extension_to_region:
+          region: "eu-north-1"
+      - deploy_extension_to_region:
+          region: "us-east-1"
+      - deploy_extension_to_region:
+          region: "us-west-1"
+      - deploy_extension_to_region:
+          region: "us-west-2"
+      - deploy_extension_to_region:
+          region: "us-east-2"
+      - deploy_extension_to_region:
+          region: "ca-central-1"
+
+workflows:
+  workflow:
+    jobs:
+      - test
+      - build:
+          destination: loggly
+          name: build_loggly
+          requires:
+            - test
+          filters:
+            branches:
+              only:
+                - main
+      - deploy:
+          requires:
+            - build_loggly
