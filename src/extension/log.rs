@@ -77,6 +77,7 @@ pub fn subscribe(config: &LogSubscriptionConfig,client: &Client, ext_id: &Extens
         .unwrap();
 }
 
+
 #[derive(Default, Debug, Deserialize, Clone)]
 pub struct CloudWatchLog {
     pub time: String,

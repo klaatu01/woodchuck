@@ -24,8 +24,7 @@ impl Destination for Loggly {
 
         let payload = logs
             .into_iter()
-            .map(|log| serde_json::to_string(&log))
-            .flatten()
+            .map(|log| log.to_string())
             .collect::<Vec<String>>()
             .join("\n");
 
