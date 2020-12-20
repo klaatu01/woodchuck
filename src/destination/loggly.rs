@@ -22,20 +22,26 @@ impl Destination for Loggly {
     fn handle_logs(&self, cloudwatch_logs: Vec<CloudWatchLog>) -> Result<()> {
         let logs = self.parser.parse(cloudwatch_logs);
 
-        let payload = logs
-            .into_iter()
+        let payload: String = logs
+            .iter()
             .map(|log| serde_json::to_string(&log))
             .flatten()
             .collect::<Vec<String>>()
             .join("\n");
 
-        println!("Sending {} logs to Loggly", payload.len());
+        println!(
+            "Sending {} logs to Loggly, payload length: {}",
+            &logs.len(),
+            &payload.len()
+        );
+
         let res = self
             .client
             .post(&self.url)
             .header(CONTENT_TYPE, "text/plain")
             .body(payload)
             .send()?;
+
         println!("Response: Status:{}", &res.status());
 
         ensure!(

@@ -163,6 +163,6 @@ mod tests {
         consume(&queue,&dest).await;
 
         //Assert
-        assert_eq!(queue.read().await.len(), 0);
+        assert_eq!(queue.read().await.len(), 1);
     }
 }
