@@ -29,12 +29,14 @@ impl Destination for Loggly {
             .collect::<Vec<String>>()
             .join("\n");
 
+        println!("Sending {} logs to Loggly", payload.len());
         let res = self
             .client
             .post(&self.url)
             .header(CONTENT_TYPE, "text/plain")
             .body(payload)
             .send()?;
+        println!("Response: Status:{}", &res.status());
 
         ensure!(
             res.status() == reqwest::StatusCode::OK,

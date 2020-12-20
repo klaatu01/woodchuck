@@ -123,6 +123,7 @@ async fn consume(queue: &LogQueue, dest:&LogDest) {
             match dest.read().await.handle_logs(split.clone()) {
                 Ok(_) => (),
                 Err(_) => {
+                    println!("failed to send {}, appending back to queue",split.len());
                     queue.write().await.append(&mut split);
                     ()
                 },
