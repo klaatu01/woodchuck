@@ -65,7 +65,7 @@ mod tests {
 
 
     #[test]
-    fn test_parse_node() {
+    fn test_parse_node_non_json() {
         let input =
             CloudWatchLog { 
                 record:
@@ -89,6 +89,29 @@ mod tests {
                 );
                 assert_eq!(log.level.unwrap(), LogLevel::Info);
                 assert_eq!(log.data, "Hello World\n");
+            },
+            _ => {
+                panic!("Expected Preformatted log");
+            }
+        }
+    }
+
+    #[test]
+    fn test_parse_node_json() {
+        let input =
+            CloudWatchLog { 
+                record:
+            serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\t{\"data\":\"Hello World\"}\n".to_string())
+                , ..Default::default()
+            };
+        let output = parse(&input);
+
+        assert_eq!(output.is_some(), true);
+
+
+        match output.unwrap() {
+            Log::Preformatted(log) => {
+                assert_eq!(log["data"], "Hello World");
             },
             _ => {
                 panic!("Expected Preformatted log");
