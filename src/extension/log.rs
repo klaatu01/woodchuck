@@ -122,7 +122,8 @@ pub async fn consume(queue: &LogQueue, dest:&LogDest) {
             let mut split = queue.write().await.split_off(0);
             match dest.read().await.handle_logs(split.clone()) {
                 Ok(_) => (),
-                Err(_) => {
+                Err(e) => {
+                    println!("ERROR {}", e.to_string());
                     println!("failed to send {}, appending back to queue",split.len());
                     queue.write().await.append(&mut split);
                     ()
