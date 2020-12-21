@@ -41,10 +41,17 @@ impl Into<StructuredLog> for NodeCloudWatchLog {
 
 pub fn parse(log: &CloudWatchLog) -> Option<Log> {
     match &log.record {
-        serde_json::Value::String(record) => match record.parse() as Result<NodeCloudWatchLog, _> {
-            Ok(l) => Some(Log::CloudWatch(l.into())),
-            Err(_) => None,
-        },
+        serde_json::Value::String(record) => 
+            match record.parse() as Result<NodeCloudWatchLog, _> {
+                Ok(l) => {
+                    let structured_log: StructuredLog = l.into();
+                    match structured_log.data {
+                        serde_json::Value::Object(_) => Some(Log::Preformatted(structured_log.data)),
+                        _ => Some(Log::CloudWatch(structured_log)),
+                    }
+                },
+                _ => None
+            }
         _ => None,
     }
 }
