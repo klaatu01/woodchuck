@@ -18,8 +18,6 @@ pub fn run(client: &Client, ext_id: ExtensionId) -> Result<()> {
             },
             Err(err) => {
                 println!("Error: {:?}", err);
-                println!("Exiting");
-                return Err(err);
             }
         }
     }
@@ -51,9 +49,17 @@ enum NextEventResponse {
 
 fn next_event(client: &reqwest::blocking::Client, ext_id: &String) -> Result<NextEventResponse> {
     let url = format!("{}/2020-01-01/extension/event/next", base_url().unwrap());
-    Ok(client
+    let response: reqwest::Result<NextEventResponse> = client
         .get(&url)
         .header(EXTENSION_ID_HEADER, ext_id)
         .send()?
-        .json()?)
+        .json();
+
+    match response {
+        Ok(data) => Ok(data),
+        Err(err) => {
+            println!("{}", err.to_string());
+            Err(anyhow::Error::msg(err.to_string()))
+        }
+    }
 }

@@ -26,7 +26,12 @@ async fn main() -> Result<()> {
     let ext_id = extension::register_extension(&client)?;
 
     log::start_log_server(&log_config, log_queue.clone()); //We need to start running our server before we register as a log extension
-    log::start_log_consumer(log_queue.clone(), log_dest);
+    log::start_log_consumer(log_queue.clone(), log_dest.clone());
     log::subscribe(&log_config, &client, &ext_id);
-    runtime::run(&client, ext_id)
+    let response = runtime::run(&client, ext_id);
+
+    //Flush logs on shutdown
+    log::consume(&log_queue, &log_dest).await;
+
+    response
 }
