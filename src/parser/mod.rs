@@ -9,8 +9,11 @@ mod python;
 
 #[derive(Debug, Serialize, PartialEq)]
 pub enum LogLevel {
+    #[serde(rename(serialize = "INFO"))]
     Info,
+    #[serde(rename(serialize = "WARN"))]
     Warn,
+    #[serde(rename(serialize = "ERROR"))]
     Error,
 }
 
@@ -20,6 +23,21 @@ pub struct StructuredLog {
     guid: Option<String>,
     level: Option<LogLevel>,
     data: Value,
+}
+
+#[derive(Debug)]
+pub enum Log {
+    CloudWatch(StructuredLog),
+    Preformatted(serde_json::Value)
+}
+
+impl ToString for Log {
+    fn to_string(&self) -> String {
+        match self {
+            Log::CloudWatch(data) => serde_json::to_string(data).unwrap(),
+            Log::Preformatted(data)=> serde_json::to_string(data).unwrap(),
+        }
+    }
 }
 
 impl TryFrom<String> for LogLevel {
@@ -38,7 +56,7 @@ impl TryFrom<String> for LogLevel {
 pub struct Parser;
 
 impl Parser {
-    pub fn parse(self, logs: Vec<CloudWatchLog>) -> Vec<StructuredLog> {
+    pub fn parse(self, logs: Vec<CloudWatchLog>) -> Vec<Log> {
         logs.into_iter()
             .filter(|log| match log.r#type.as_str() {
                 "function" => true,
@@ -56,7 +74,7 @@ impl Parser {
     }
 }
 
-fn try_parse_cloudwatch_log(log: &CloudWatchLog) -> Result<StructuredLog> {
+fn try_parse_cloudwatch_log(log: &CloudWatchLog) -> Result<Log> {
     match node::parse(log) {
         Some(dto) => {
             return Ok(dto);
@@ -84,6 +102,7 @@ mod tests {
     use super::try_parse_cloudwatch_log;
     use super::LogLevel;
     use super::CloudWatchLog;
+    use super::Log;
 
     #[test]
     fn can_parse_node() {
@@ -97,13 +116,17 @@ mod tests {
 
         assert_eq!(output.is_ok(), true);
 
-        let log = output.unwrap();
-        println!("{:?}", log);
-
-        assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
-        assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
-        assert_eq!(log.level.unwrap(), LogLevel::Info);
-        assert_eq!(log.data, "Hello World\n");
+        match output.unwrap() {
+            Log::CloudWatch(log) => {
+                assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
+                assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
+                assert_eq!(log.level.unwrap(), LogLevel::Info);
+                assert_eq!(log.data, "Hello World\n");
+            },
+            _ => {
+                panic!("Expected Cloudwatch formatted log");
+            }
+        }
     }
 
     #[test]
@@ -119,13 +142,17 @@ mod tests {
 
         assert_eq!(output.is_ok(), true);
 
-        let log = output.unwrap();
-        println!("{:?}", log);
-
-        assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
-        assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
-        assert_eq!(log.level.unwrap(), LogLevel::Info);
-        assert_eq!(log.data, "Hello World\n");
+        match output.unwrap() {
+            Log::CloudWatch(log) => {
+                assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
+                assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
+                assert_eq!(log.level.unwrap(), LogLevel::Info);
+                assert_eq!(log.data, "Hello World\n");
+            },
+            _ => {
+                panic!("Expected Cloudwatch formatted log");
+            }
+        }
     }
 
     #[test]
@@ -141,14 +168,15 @@ mod tests {
 
         assert_eq!(output.is_ok(), true);
 
-        let log = output.unwrap();
-        println!("{:?}", log);
-
-        assert_eq!(log.timestamp.is_some(),true);
-        assert_eq!(log.guid.is_none(), true);
-        assert_eq!(log.level.is_none(), true);
-        assert_eq!(log.data["body"], "DotNet");
-        assert_eq!(log.data["statusCode"], 200);
+        match output.unwrap() {
+            Log::Preformatted(log) => {
+                assert_eq!(log["body"], "DotNet");
+                assert_eq!(log["statusCode"], 200);
+            }
+            _ => {
+                panic!("Expected Preformatted log");
+            }
+        }
     }
 
     #[test]

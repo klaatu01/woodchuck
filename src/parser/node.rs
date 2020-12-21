@@ -1,4 +1,4 @@
-use super::{LogLevel, StructuredLog};
+use super::{LogLevel, StructuredLog, Log};
 use crate::log::CloudWatchLog;
 use recap::Recap;
 use serde::Deserialize;
@@ -39,10 +39,10 @@ impl Into<StructuredLog> for NodeCloudWatchLog {
     }
 }
 
-pub fn parse(log: &CloudWatchLog) -> Option<StructuredLog> {
+pub fn parse(log: &CloudWatchLog) -> Option<Log> {
     match &log.record {
         serde_json::Value::String(record) => match record.parse() as Result<NodeCloudWatchLog, _> {
-            Ok(l) => Some(l.into()),
+            Ok(l) => Some(Log::CloudWatch(l.into())),
             Err(_) => None,
         },
         _ => None,
@@ -52,9 +52,10 @@ pub fn parse(log: &CloudWatchLog) -> Option<StructuredLog> {
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::super::LogLevel;
+    use super::super::{Log,LogLevel};
     use super::parse;
     use super::CloudWatchLog;
+
 
     #[test]
     fn test_parse_node() {
@@ -67,19 +68,24 @@ mod tests {
         let output = parse(&input);
 
         assert_eq!(output.is_some(), true);
-        let output_unwrapped = output.unwrap();
 
-        println!("{:?}", output_unwrapped);
 
-        assert_eq!(
-            output_unwrapped.timestamp.unwrap(),
-            "2020-11-18T23:52:30.128Z"
-        );
-        assert_eq!(
-            output_unwrapped.guid.unwrap(),
-            "6e48723a-1596-4313-a9af-e4da9214d637"
-        );
-        assert_eq!(output_unwrapped.level.unwrap(), LogLevel::Info);
-        assert_eq!(output_unwrapped.data, "Hello World\n");
+        match output.unwrap() {
+            Log::CloudWatch(log) => {
+                assert_eq!(
+                    log.timestamp.unwrap(),
+                    "2020-11-18T23:52:30.128Z"
+                );
+                assert_eq!(
+                    log.guid.unwrap(),
+                    "6e48723a-1596-4313-a9af-e4da9214d637"
+                );
+                assert_eq!(log.level.unwrap(), LogLevel::Info);
+                assert_eq!(log.data, "Hello World\n");
+            },
+            _ => {
+                panic!("Expected Preformatted log");
+            }
+        }
     }
 }
