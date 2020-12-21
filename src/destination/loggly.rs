@@ -4,6 +4,7 @@ use crate::parser::Parser;
 use anyhow::{ensure, Error, Result};
 use reqwest::blocking::Client;
 use reqwest::header::CONTENT_TYPE;
+use std::time::Duration;
 
 #[derive(Debug, Clone)]
 pub struct Loggly {
@@ -57,6 +58,7 @@ pub struct LogglyBuilder {
     token: Option<String>,
     tag: Option<String>,
     parser: Option<Parser>,
+    timeout: Option<Duration>,
 }
 
 impl LogglyBuilder {
@@ -65,6 +67,7 @@ impl LogglyBuilder {
             tag: None,
             token: None,
             parser: None,
+            timeout: None,
         }
     }
 
@@ -83,16 +86,25 @@ impl LogglyBuilder {
         self
     }
 
+    pub fn with_timeout(mut self, timeout: Option<u64>) -> Self {
+        self.timeout = match timeout {
+            Some(t) => Some(Duration::from_millis(t)),
+            None => None,
+        };
+        self
+    }
+
     pub fn build(self) -> Result<Loggly> {
         match self {
             Self {
                 tag: Some(tag),
                 token: Some(token),
                 parser: Some(parser),
+                timeout: _,
             } => Ok(Loggly {
                 url: format!("http://logs-01.loggly.com/bulk/{}/tag/{}/", token, tag),
                 parser,
-                client: Client::builder().timeout(None).build()?,
+                client: Client::builder().timeout(self.timeout).build()?,
             }),
             Self { token: None, .. } => Err(Error::msg("Token Required")),
             Self { tag: None, .. } => Err(Error::msg("Tag Required")),
