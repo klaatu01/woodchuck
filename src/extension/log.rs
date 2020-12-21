@@ -107,13 +107,13 @@ pub fn start_log_consumer(log_queue: LogQueue, log_dest: LogDest){
     async fn run(queue: LogQueue, dest: LogDest) {
         loop {
             consume(&queue, &dest).await;
-            std::thread::sleep(std::time::Duration::from_millis(100));
+            std::thread::sleep(std::time::Duration::from_secs(10));
         }
     };
-    tokio::spawn(run(log_queue.clone(), log_dest.clone()));
+    tokio::spawn(run(log_queue, log_dest));
 }
 
-async fn consume(queue: &LogQueue, dest:&LogDest) {
+pub async fn consume(queue: &LogQueue, dest:&LogDest) {
     let length = queue.read().await.len();
     match length
     {
