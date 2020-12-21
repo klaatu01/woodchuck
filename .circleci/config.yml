@@ -113,6 +113,10 @@ workflows:
             branches:
               only:
                 - main
-      - deploy:
+      - release:
+          type: approval
           requires:
             - build_loggly
+      - deploy:
+          requires:
+            - release
