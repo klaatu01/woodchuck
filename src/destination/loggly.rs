@@ -23,7 +23,7 @@ impl Destination for Loggly {
         let logs = self.parser.parse(cloudwatch_logs);
 
         let payload = logs
-            .into_iter()
+            .iter()
             .map(|log| log.to_string())
             .collect::<Vec<String>>()
             .join("\n");
