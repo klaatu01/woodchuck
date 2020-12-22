@@ -16,7 +16,10 @@ pub fn get_default() -> Result<LogDest> {
     let tag = std::env::var("LOGGLY_TAG").unwrap();
     let timeout: Option<u64> = match std::env::var("LOGGLY_TIMEOUT") {
         Ok(data) => match data.parse() {
-            Ok(t) => Some(t),
+            Ok(t) => {
+                println!("LOGGLY_TIMEOUT set to {}ms", &t);
+                Some(t)
+            }
             Err(_) => {
                 println!("LOGGLY_TIMEOUT: Cannot be parsed from {}", data);
                 None
