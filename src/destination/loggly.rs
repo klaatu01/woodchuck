@@ -103,7 +103,7 @@ impl LogglyBuilder {
             } => Ok(Loggly {
                 url: format!("http://logs-01.loggly.com/bulk/{}/tag/{}/", token, tag),
                 parser,
-                client: Client::builder().timeout(self.timeout).build()?,
+                client: Client::builder().connect_timeout(self.timeout).build()?,
             }),
             Self { token: None, .. } => Err(Error::msg("Token Required")),
             Self { tag: None, .. } => Err(Error::msg("Tag Required")),
