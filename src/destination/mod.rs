@@ -7,6 +7,8 @@ use tokio::sync::RwLock;
 
 mod loggly;
 
+const DEFAULT_TIMEOUT: u64 = 500;
+
 pub trait Destination {
     fn handle_logs(&self, logs: Vec<CloudWatchLog>) -> Result<()>;
 }
@@ -16,16 +18,20 @@ pub fn get_default() -> Result<LogDest> {
     let tag = std::env::var("LOGGLY_TAG").unwrap();
     let timeout: Option<u64> = match std::env::var("LOGGLY_TIMEOUT") {
         Ok(data) => match data.parse() {
+            Ok(0) => {
+                println!("LOGGLY_TIMEOUT set to Infinite");
+                None
+            }
             Ok(t) => {
                 println!("LOGGLY_TIMEOUT set to {}ms", &t);
                 Some(t)
             }
             Err(_) => {
                 println!("LOGGLY_TIMEOUT: Cannot be parsed from {}", data);
-                None
+                Some(DEFAULT_TIMEOUT)
             }
         },
-        Err(_) => None,
+        Err(_) => Some(DEFAULT_TIMEOUT),
     };
 
     Ok(Arc::new(RwLock::new(
