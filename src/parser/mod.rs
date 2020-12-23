@@ -35,7 +35,7 @@ impl ToString for Log {
     fn to_string(&self) -> String {
         match self {
             Log::CloudWatch(data) => serde_json::to_string(data).unwrap(),
-            Log::Preformatted(data)=> serde_json::to_string(data).unwrap(),
+            Log::Preformatted(data) => data.to_string(),
         }
     }
 }

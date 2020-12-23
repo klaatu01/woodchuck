@@ -108,8 +108,11 @@ mod tests {
 
         assert_eq!(output.is_some(), true);
 
+        let l = output.unwrap();
 
-        match output.unwrap() {
+        println!("{}", l.to_string());
+
+        match l {
             Log::Preformatted(log) => {
                 assert_eq!(log["data"], "Hello World");
             },

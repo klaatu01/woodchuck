@@ -35,6 +35,8 @@ impl Destination for Loggly {
             &payload.len()
         );
 
+        println!("{}", &payload);
+
         let res = self
             .client
             .post(&self.url)
