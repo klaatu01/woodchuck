@@ -1,23 +1,32 @@
-use super::{base_url, ExtensionId, EXTENSION_ID_HEADER};
+use super::{base_url, log, ExtensionId, EXTENSION_ID_HEADER};
+use crate::{LogDest, LogQueue};
 use anyhow::Result;
 use reqwest::blocking::Client;
 
-pub fn run(client: &Client, ext_id: ExtensionId) -> Result<()> {
+pub async fn run(
+    client: &Client,
+    ext_id: ExtensionId,
+    log_queue: LogQueue,
+    log_dest: LogDest,
+) -> Result<()> {
     loop {
         match next_event(&client, &ext_id) {
             Ok(evt) => match evt {
                 NextEventResponse::Invoke { request_id, .. } => {
                     println!("{}", request_id);
+                    log::consume(&log_queue, &log_dest).await;
                 }
                 NextEventResponse::Shutdown {
                     shutdown_reason, ..
                 } => {
                     println!("Exiting: {}", shutdown_reason);
+                    log::consume(&log_queue, &log_dest).await;
                     return Ok(());
                 }
             },
             Err(err) => {
                 println!("Error: {:?}", err);
+                log::consume(&log_queue, &log_dest).await;
             }
         }
     }
