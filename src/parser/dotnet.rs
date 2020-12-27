@@ -1,10 +1,9 @@
-use super::Log;
-use crate::log::CloudWatchLog;
+use crate::models::{Log, RawCloudWatchLog};
 
-pub fn parse(log: &CloudWatchLog) -> Option<Log> {
+pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
     match &log.record {
         serde_json::Value::String(record) => match serde_json::from_str(&record) {
-            Ok(data) => Some(Log::Preformatted(data)),
+            Ok(data) => Some(Log::Formatted(data)),
             Err(_) => None,
         },
         _ => None,
@@ -14,13 +13,13 @@ pub fn parse(log: &CloudWatchLog) -> Option<Log> {
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::super::Log;
     use super::parse;
-    use super::CloudWatchLog;
+    use super::Log;
+    use super::RawCloudWatchLog;
 
     #[test]
     fn test_parse_dotnet() {
-        let input = CloudWatchLog {
+        let input = RawCloudWatchLog {
             record: serde_json::Value::String(
                 "{ \"statusCode\": 200, \"body\": \"DotNet\", \"level\": \"info\"  }".to_string(),
             ),
@@ -31,7 +30,7 @@ mod tests {
 
         assert_eq!(output.is_some(), true);
         match output.unwrap() {
-            Log::Preformatted(log) => {
+            Log::Formatted(log) => {
                 assert_eq!(log["statusCode"], 200);
                 assert_eq!(log["body"], "DotNet");
             }

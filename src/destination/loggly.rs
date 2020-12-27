@@ -1,5 +1,5 @@
-use crate::destination::Destination;
-use crate::extension::log::CloudWatchLog;
+use crate::destination::LogDestination;
+use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
 use anyhow::{ensure, Error, Result};
 use reqwest::blocking::Client;
@@ -19,8 +19,8 @@ impl Loggly {
     }
 }
 
-impl Destination for Loggly {
-    fn handle_logs(&self, cloudwatch_logs: Vec<CloudWatchLog>) -> Result<()> {
+impl LogDestination for Loggly {
+    fn handle_logs(&self, cloudwatch_logs: Vec<RawCloudWatchLog>) -> Result<()> {
         let logs = self.parser.parse(cloudwatch_logs);
 
         let payload: String = logs

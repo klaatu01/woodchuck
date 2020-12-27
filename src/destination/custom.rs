@@ -1,5 +1,5 @@
-use crate::destination::Destination;
-use crate::extension::log::CloudWatchLog;
+use crate::destination::LogDestination;
+use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
 use anyhow::Result;
 
@@ -14,8 +14,8 @@ impl Custom {
     }
 }
 
-impl Destination for Custom {
-    fn handle_logs(&self, logs: Vec<CloudWatchLog>) -> Result<()> {
+impl LogDestination for Custom {
+    fn handle_logs(&self, logs: Vec<RawCloudWatchLog>) -> Result<()> {
         let nd_logs = self.parser.parse(logs);
         for log in nd_logs.into_iter() {
             println!("PARSED = {:?}", log);

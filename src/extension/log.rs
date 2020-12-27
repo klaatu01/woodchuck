@@ -1,7 +1,7 @@
 use super::{base_url,ExtensionId, EXTENSION_ID_HEADER};
-use crate::{LogQueue, LogDest};
+use crate::models::{LogQueue, RawCloudWatchLog};
+use crate::destination::Destination;
 use reqwest::blocking::Client;
-use serde::Deserialize;
 use warp::{path, serve, Filter, Reply};
 use std::env;
 
@@ -77,14 +77,6 @@ pub fn subscribe(config: &LogSubscriptionConfig,client: &Client, ext_id: &Extens
         .unwrap();
 }
 
-
-#[derive(Default, Debug, Deserialize, Clone)]
-pub struct CloudWatchLog {
-    pub time: String,
-    pub r#type: String,
-    pub record: serde_json::Value,
-}
-
 pub fn start_log_server(config: &LogSubscriptionConfig, log_queue: LogQueue) {
     async fn run(port: u16, log_queue: LogQueue) {
         let routes = path::end()
@@ -103,18 +95,7 @@ fn with_log_queue(
     warp::any().map(move || log_queue.clone())
 }
 
-
-pub fn start_log_consumer(log_queue: LogQueue, log_dest: LogDest){
-    async fn run(queue: LogQueue, dest: LogDest) {
-        loop {
-            consume(&queue, &dest).await;
-            std::thread::sleep(std::time::Duration::from_secs(10));
-        }
-    };
-    tokio::spawn(run(log_queue, log_dest));
-}
-
-pub async fn consume(queue: &LogQueue, dest:&LogDest) {
+pub async fn consume(queue: &LogQueue, dest:&Destination) {
     let length = queue.read().await.len();
     match length
     {
@@ -135,7 +116,7 @@ pub async fn consume(queue: &LogQueue, dest:&LogDest) {
 }
 
 async fn handle_log(
-    logs: Vec<CloudWatchLog>,
+    logs: Vec<RawCloudWatchLog>,
     log_queue: LogQueue,
 ) -> Result<impl Reply, std::convert::Infallible> {
     log_queue.write().await.append(&mut logs.clone());
@@ -144,18 +125,16 @@ async fn handle_log(
 
 #[cfg(test)]
 mod tests {
-
-    use super::CloudWatchLog;
-    use super::LogQueue;
-    use crate::{Arc, LogDest, RwLock};
+    use super::RawCloudWatchLog;
+    use crate::models::new_log_queue;
     use super::consume;
     #[tokio::test]
     async fn consume_log() {
         //Arrange
-        let queue: LogQueue = Arc::new(RwLock::new(Vec::new()));
-        let dest: LogDest = crate::destination::get_test_destination().unwrap();
+        let queue = new_log_queue();
+        let dest = crate::destination::get_test_destination().unwrap();
         queue.write().await.push(
-            CloudWatchLog { 
+            RawCloudWatchLog { 
                 record:
             serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\tHello World\n".to_string())
                 , ..Default::default()
