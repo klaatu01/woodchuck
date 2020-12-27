@@ -2,8 +2,8 @@
 extern crate serde;
 extern crate serde_json;
 
-mod destination;
 mod extension;
+mod handler;
 mod models;
 mod parser;
 
@@ -15,7 +15,7 @@ use reqwest::blocking::Client;
 async fn main() -> Result<()> {
     let client = Client::builder().timeout(None).build()?;
     let log_queue = models::new_log_queue();
-    let log_dest = destination::get_default()?;
+    let log_dest = handler::get_default()?;
     let log_config = log::LogSubscriptionConfig::default();
 
     let ext_id = extension::register_extension(&client)?;

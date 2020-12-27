@@ -1,6 +1,6 @@
 use super::{base_url,ExtensionId, EXTENSION_ID_HEADER};
 use crate::models::{LogQueue, RawCloudWatchLog};
-use crate::destination::Destination;
+use crate::handler::Handler;
 use reqwest::blocking::Client;
 use warp::{path, serve, Filter, Reply};
 use std::env;
@@ -95,7 +95,7 @@ fn with_log_queue(
     warp::any().map(move || log_queue.clone())
 }
 
-pub async fn consume(queue: &LogQueue, dest:&Destination) {
+pub async fn consume(queue: &LogQueue, dest:&Handler) {
     let length = queue.read().await.len();
     match length
     {
@@ -132,7 +132,7 @@ mod tests {
     async fn consume_log() {
         //Arrange
         let queue = new_log_queue();
-        let dest = crate::destination::get_test_destination().unwrap();
+        let dest = crate::handler::get_test_destination().unwrap();
         queue.write().await.push(
             RawCloudWatchLog { 
                 record:

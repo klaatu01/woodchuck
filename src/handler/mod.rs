@@ -8,13 +8,13 @@ mod loggly;
 
 const DEFAULT_TIMEOUT: u64 = 500;
 
-pub trait LogDestination {
+pub trait LogHandler {
     fn handle_logs(&self, logs: Vec<RawCloudWatchLog>) -> Result<()>;
 }
 
-pub type Destination = Arc<RwLock<dyn LogDestination + Sync + Send>>;
+pub type Handler = Arc<RwLock<dyn LogHandler + Sync + Send>>;
 
-pub fn get_default() -> Result<Destination> {
+pub fn get_default() -> Result<Handler> {
     let token = std::env::var("LOGGLY_TOKEN").unwrap();
     let tag = std::env::var("LOGGLY_TAG").unwrap();
     let timeout: Option<u64> = match std::env::var("LOGGLY_TIMEOUT") {
@@ -48,6 +48,6 @@ pub fn get_default() -> Result<Destination> {
 #[cfg(test)]
 mod custom;
 #[cfg(test)]
-pub fn get_test_destination() -> Result<Destination> {
+pub fn get_test_destination() -> Result<Handler> {
     Ok(Arc::new(RwLock::new(custom::Custom::new(Parser))))
 }

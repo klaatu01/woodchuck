@@ -1,5 +1,5 @@
 use super::{base_url, log, ExtensionId, EXTENSION_ID_HEADER};
-use crate::destination::Destination;
+use crate::handler::Handler;
 use crate::models::LogQueue;
 use anyhow::Result;
 use reqwest::blocking::Client;
@@ -8,7 +8,7 @@ pub async fn run(
     client: &Client,
     ext_id: ExtensionId,
     log_queue: LogQueue,
-    log_dest: Destination,
+    log_dest: Handler,
 ) -> Result<()> {
     loop {
         match next_event(&client, &ext_id) {
