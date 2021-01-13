@@ -1,7 +1,7 @@
 use super::{base_url,ExtensionId, EXTENSION_ID_HEADER};
 use crate::models::{LogQueue, RawCloudWatchLog};
 use crate::handler::Handler;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use warp::{path, serve, Filter, Reply};
 use std::env;
 
@@ -9,12 +9,14 @@ const MAX_ITEMS_DEFAULT: u32 = 1000;
 const MAX_BYTES_DEFAULT: u32 = 262144; //This needs to be configurable with an envar;
 const TIMEOUT_DEFAULT: u32 = 5000; //This shouldnt need to be this high anymore as we are accepting logs async now;
 const PORT_DEFAULT: u16 = 1060;
+const HOST_DEFAULT: &str = "sandbox";
 
 pub struct LogSubscriptionConfig {
     port: u16, 
     max_items: u32,
     max_bytes: u32,
-    timeout: u32
+    timeout: u32,
+    host: String,
 }
 
 impl Default for LogSubscriptionConfig {
@@ -36,6 +38,10 @@ impl Default for LogSubscriptionConfig {
                 Ok(var) => var.parse().unwrap(),
                 Err(_) => PORT_DEFAULT,
             },
+            host: match env::var("WOODCHUCK_HOST") {
+                Ok(var) => var.parse().unwrap(),
+                Err(_) => HOST_DEFAULT.to_string(),
+            },
         }
     }
 }
@@ -47,7 +53,7 @@ fn log_subscription_request(config: &LogSubscriptionConfig) -> serde_json::Value
                 \"destination\": 
                 {{ 
                     \"protocol\": \"HTTP\", 
-                    \"URI\":\"http://sandbox:{}\"
+                    \"URI\":\"http://{}:{}\"
                 }},
                 \"types\": 
                 [
@@ -61,19 +67,19 @@ fn log_subscription_request(config: &LogSubscriptionConfig) -> serde_json::Value
                      \"timeoutMs\": {}
                  }}
              }}",
-             config.port, config.max_items, config.max_bytes, config.timeout)
+             config.host, config.port, config.max_items, config.max_bytes, config.timeout)
         .as_str())
         .unwrap()
 }
 
-pub fn subscribe(config: &LogSubscriptionConfig,client: &Client, ext_id: &ExtensionId) {
+pub async fn subscribe(config: &LogSubscriptionConfig,client: &Client, ext_id: &ExtensionId) {
     let body = log_subscription_request(&config);
     let url = format!("{}/2020-08-15/logs", base_url().unwrap());
     client
         .put(&url)
         .header(EXTENSION_ID_HEADER, ext_id)
         .json(&body)
-        .send()
+        .send().await
         .unwrap();
 }
 
@@ -102,7 +108,7 @@ pub async fn consume(queue: &LogQueue, dest:&Handler) {
         0 => (),
         _ => {
             let split = queue.write().await.split_off(0).clone();
-            match dest.read().await.handle_logs(split.clone()) {
+            match dest.read().await.handle_logs(split.clone()).await {
                 Ok(_) => (),
                 Err(e) => {
                     println!("ERROR {}", e.to_string());

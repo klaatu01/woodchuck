@@ -22,7 +22,7 @@ regex = "1.4.2"
 recap = "0.1.1"
 log = "0.4.13"
 env_logger = "0.8.2"
+async-trait = "0.1.42"
 
 [features]
-loggly = []
-custom = []
+local = []

@@ -1,6 +1,6 @@
 use anyhow::ensure;
 use anyhow::Result;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use std::collections::HashMap;
 
 pub type ExtensionId = String;
@@ -19,7 +19,7 @@ pub fn base_url() -> Option<String> {
     }
 }
 
-pub fn register_extension(client: &Client) -> Result<ExtensionId> {
+pub async fn register_extension(client: &Client) -> Result<ExtensionId> {
     let mut map = HashMap::new();
     map.insert("events", vec!["INVOKE", "SHUTDOWN"]);
     let url = format!("{}/2020-01-01/extension/register", base_url().unwrap());
@@ -27,7 +27,8 @@ pub fn register_extension(client: &Client) -> Result<ExtensionId> {
         .post(&url)
         .header(EXTENSION_HEADER_NAME, EXTENSION_NAME)
         .json(&map)
-        .send()?;
+        .send()
+        .await?;
 
     ensure!(
         res.status() == reqwest::StatusCode::OK,
