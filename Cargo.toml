@@ -26,3 +26,4 @@ async-trait = "0.1.42"
 
 [features]
 local = []
+loggly = []
