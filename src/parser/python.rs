@@ -1,5 +1,4 @@
-use super::{Log, LogLevel, StructuredLog};
-use crate::log::CloudWatchLog;
+use crate::models::{Log, LogLevel, RawCloudWatchLog, StructuredLog};
 use recap::Recap;
 use serde::Deserialize;
 
@@ -39,11 +38,11 @@ impl Into<StructuredLog> for PythonCloudWatchLog {
     }
 }
 
-pub fn parse(log: &CloudWatchLog) -> Option<Log> {
+pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
     match &log.record {
         serde_json::Value::String(record) => {
             match record.parse() as Result<PythonCloudWatchLog, _> {
-                Ok(l) => Some(Log::CloudWatch(l.into())),
+                Ok(l) => Some(Log::Unformatted(l.into())),
                 Err(_) => None,
             }
         }
@@ -54,13 +53,14 @@ pub fn parse(log: &CloudWatchLog) -> Option<Log> {
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::super::{Log, LogLevel};
     use super::parse;
-    use super::CloudWatchLog;
+    use super::Log;
+    use super::RawCloudWatchLog;
+    use crate::models::LogLevel;
 
     #[test]
     fn test_parse_python() {
-        let input = CloudWatchLog {
+        let input = RawCloudWatchLog {
             record: serde_json::Value::String(
                 "[INFO]	2019-10-23T14:40:59.59Z	313e0588-e4f1-4d19-8ae4-44980a446805	Hello World\n"
                     .to_string(),
@@ -71,7 +71,7 @@ mod tests {
 
         assert_eq!(output.is_some(), true);
         match output.unwrap() {
-            Log::CloudWatch(log) => {
+            Log::Unformatted(log) => {
                 assert_eq!(log.timestamp.unwrap(), "2019-10-23T14:40:59.59Z");
                 assert_eq!(log.guid.unwrap(), "313e0588-e4f1-4d19-8ae4-44980a446805");
                 assert_eq!(log.level.unwrap(), LogLevel::Info);

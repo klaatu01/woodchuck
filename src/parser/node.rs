@@ -1,5 +1,4 @@
-use super::{LogLevel, StructuredLog, Log};
-use crate::log::CloudWatchLog;
+use crate::models::{LogLevel, StructuredLog, Log, RawCloudWatchLog};
 use recap::Recap;
 use serde::Deserialize;
 
@@ -39,15 +38,15 @@ impl Into<StructuredLog> for NodeCloudWatchLog {
     }
 }
 
-pub fn parse(log: &CloudWatchLog) -> Option<Log> {
+pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
     match &log.record {
         serde_json::Value::String(record) => 
             match record.parse() as Result<NodeCloudWatchLog, _> {
                 Ok(l) => {
                     let structured_log: StructuredLog = l.into();
                     match structured_log.data {
-                        serde_json::Value::Object(_) => Some(Log::Preformatted(structured_log.data)),
-                        _ => Some(Log::CloudWatch(structured_log)),
+                        serde_json::Value::Object(_) => Some(Log::Formatted(structured_log.data)),
+                        _ => Some(Log::Unformatted(structured_log)),
                     }
                 },
                 _ => None
@@ -59,15 +58,13 @@ pub fn parse(log: &CloudWatchLog) -> Option<Log> {
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::super::{Log,LogLevel};
+    use crate::models::{Log,LogLevel, RawCloudWatchLog};
     use super::parse;
-    use super::CloudWatchLog;
-
 
     #[test]
     fn test_parse_node_non_json() {
         let input =
-            CloudWatchLog { 
+            RawCloudWatchLog { 
                 record:
             serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\tHello World\n".to_string())
                 , ..Default::default()
@@ -78,7 +75,7 @@ mod tests {
 
 
         match output.unwrap() {
-            Log::CloudWatch(log) => {
+            Log::Unformatted(log) => {
                 assert_eq!(
                     log.timestamp.unwrap(),
                     "2020-11-18T23:52:30.128Z"
@@ -99,7 +96,7 @@ mod tests {
     #[test]
     fn test_parse_node_json() {
         let input =
-            CloudWatchLog { 
+            RawCloudWatchLog { 
                 record:
             serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\t{\"data\":\"Hello World\"}\n".to_string())
                 , ..Default::default()
@@ -113,7 +110,7 @@ mod tests {
         println!("{}", l.to_string());
 
         match l {
-            Log::Preformatted(log) => {
+            Log::Formatted(log) => {
                 assert_eq!(log["data"], "Hello World");
             },
             _ => {

@@ -1,6 +1,5 @@
-use crate::extension::log::CloudWatchLog;
+use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
-use crate::LogDest;
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -9,11 +8,13 @@ mod loggly;
 
 const DEFAULT_TIMEOUT: u64 = 500;
 
-pub trait Destination {
-    fn handle_logs(&self, logs: Vec<CloudWatchLog>) -> Result<()>;
+pub trait LogHandler {
+    fn handle_logs(&self, logs: Vec<RawCloudWatchLog>) -> Result<()>;
 }
 
-pub fn get_default() -> Result<LogDest> {
+pub type Handler = Arc<RwLock<dyn LogHandler + Sync + Send>>;
+
+pub fn get_default() -> Result<Handler> {
     let token = std::env::var("LOGGLY_TOKEN").unwrap();
     let tag = std::env::var("LOGGLY_TAG").unwrap();
     let timeout: Option<u64> = match std::env::var("LOGGLY_TIMEOUT") {
@@ -47,6 +48,6 @@ pub fn get_default() -> Result<LogDest> {
 #[cfg(test)]
 mod custom;
 #[cfg(test)]
-pub fn get_test_destination() -> Result<LogDest> {
+pub fn get_test_destination() -> Result<Handler> {
     Ok(Arc::new(RwLock::new(custom::Custom::new(Parser))))
 }

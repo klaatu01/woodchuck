@@ -2,25 +2,20 @@
 extern crate serde;
 extern crate serde_json;
 
-use anyhow::Result;
-use reqwest::blocking::Client;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
 mod extension;
-use extension::{log, log::CloudWatchLog, runtime};
-
-mod destination;
+mod handler;
+mod models;
 mod parser;
 
-pub type LogQueue = Arc<RwLock<Vec<CloudWatchLog>>>;
-pub type LogDest = Arc<RwLock<dyn destination::Destination + Sync + Send>>;
+use anyhow::Result;
+use extension::{log, runtime};
+use reqwest::blocking::Client;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let client = Client::builder().timeout(None).build()?;
-    let log_queue: LogQueue = Arc::new(RwLock::new(Vec::new()));
-    let log_dest: LogDest = destination::get_default()?;
+    let log_queue = models::new_log_queue();
+    let log_dest = handler::get_default()?;
     let log_config = log::LogSubscriptionConfig::default();
 
     let ext_id = extension::register_extension(&client)?;
