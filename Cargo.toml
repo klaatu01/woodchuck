@@ -20,6 +20,8 @@ warp = "0.2.5"
 futures = "0.3.8"
 regex = "1.4.2"
 recap = "0.1.1"
+log = "0.4.13"
+env_logger = "0.8.2"
 
 [features]
 loggly = []

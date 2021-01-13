@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 pub type ExtensionId = String;
 
-pub mod log;
+pub mod logs_api;
 pub mod runtime;
 
 pub const EXTENSION_HEADER_NAME: &str = "Lambda-Extension-Name";
