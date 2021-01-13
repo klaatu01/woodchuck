@@ -1,19 +1,23 @@
 use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
 use anyhow::Result;
+use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+mod custom;
 mod loggly;
 
 const DEFAULT_TIMEOUT: u64 = 500;
 
+#[async_trait]
 pub trait LogHandler {
-    fn handle_logs(&self, logs: Vec<RawCloudWatchLog>) -> Result<()>;
+    async fn handle_logs(&self, logs: Vec<RawCloudWatchLog>) -> Result<()>;
 }
 
 pub type Handler = Arc<RwLock<dyn LogHandler + Sync + Send>>;
 
+#[cfg(not(feature = "local"))]
 pub fn get_default() -> Result<Handler> {
     let token = std::env::var("LOGGLY_TOKEN").unwrap();
     let tag = std::env::var("LOGGLY_TAG").unwrap();
@@ -45,8 +49,11 @@ pub fn get_default() -> Result<Handler> {
     )))
 }
 
-#[cfg(test)]
-mod custom;
+#[cfg(feature = "local")]
+pub fn get_default() -> Result<Handler> {
+    Ok(Arc::new(RwLock::new(custom::Custom::new(Parser))))
+}
+
 #[cfg(test)]
 pub fn get_test_destination() -> Result<Handler> {
     Ok(Arc::new(RwLock::new(custom::Custom::new(Parser))))

@@ -2,8 +2,9 @@ use crate::handler::LogHandler;
 use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
 use anyhow::{ensure, Error, Result};
-use reqwest::blocking::Client;
+use async_trait::async_trait;
 use reqwest::header::CONTENT_TYPE;
+use reqwest::Client;
 use std::time::Duration;
 
 #[derive(Debug, Clone)]
@@ -19,8 +20,9 @@ impl Loggly {
     }
 }
 
+#[async_trait]
 impl LogHandler for Loggly {
-    fn handle_logs(&self, cloudwatch_logs: Vec<RawCloudWatchLog>) -> Result<()> {
+    async fn handle_logs(&self, cloudwatch_logs: Vec<RawCloudWatchLog>) -> Result<()> {
         let logs = self.parser.parse(cloudwatch_logs);
 
         let payload: String = logs
@@ -29,7 +31,7 @@ impl LogHandler for Loggly {
             .collect::<Vec<String>>()
             .join("\n");
 
-        println!(
+        log::debug!(
             "Sending {} logs to Loggly, payload length: {}",
             &logs.len(),
             &payload.len()
@@ -40,7 +42,8 @@ impl LogHandler for Loggly {
             .post(&self.url)
             .header(CONTENT_TYPE, "text/plain")
             .body(payload)
-            .send()?;
+            .send()
+            .await?;
 
         println!("Response: Status:{}", &res.status());
 
@@ -100,11 +103,18 @@ impl LogglyBuilder {
                 token: Some(token),
                 parser: Some(parser),
                 timeout: _,
-            } => Ok(Loggly {
-                url: format!("http://logs-01.loggly.com/bulk/{}/tag/{}/", token, tag),
-                parser,
-                client: Client::builder().timeout(self.timeout).build()?,
-            }),
+            } => {
+                let client = match self.timeout {
+                    Some(duration) => Client::builder().timeout(duration).build()?,
+                    None => Client::builder().build()?,
+                };
+
+                Ok(Loggly {
+                    url: format!("http://logs-01.loggly.com/bulk/{}/tag/{}/", token, tag),
+                    parser,
+                    client,
+                })
+            }
             Self { token: None, .. } => Err(Error::msg("Token Required")),
             Self { tag: None, .. } => Err(Error::msg("Tag Required")),
             Self { parser: None, .. } => Err(Error::msg("Parser Required")),

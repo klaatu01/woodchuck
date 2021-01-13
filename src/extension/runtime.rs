@@ -1,8 +1,8 @@
-use super::{base_url, log, ExtensionId, EXTENSION_ID_HEADER};
+use super::{base_url, logs_api, ExtensionId, EXTENSION_ID_HEADER};
 use crate::handler::Handler;
 use crate::models::LogQueue;
 use anyhow::Result;
-use reqwest::blocking::Client;
+use reqwest::Client;
 
 pub async fn run(
     client: &Client,
@@ -11,23 +11,25 @@ pub async fn run(
     log_dest: Handler,
 ) -> Result<()> {
     loop {
-        match next_event(&client, &ext_id) {
+        let event = next_event(&client, &ext_id).await;
+        log::debug!("Next Event: {:?}", &event);
+        match event {
             Ok(evt) => match evt {
                 NextEventResponse::Invoke { request_id, .. } => {
-                    println!("{}", request_id);
-                    log::consume(&log_queue, &log_dest).await;
+                    log::debug!("Request Id: {:?}", request_id);
+                    logs_api::consume(&log_queue, &log_dest).await;
                 }
                 NextEventResponse::Shutdown {
                     shutdown_reason, ..
                 } => {
-                    println!("Exiting: {}", shutdown_reason);
-                    log::consume(&log_queue, &log_dest).await;
+                    log::debug!("Exiting: {:?}", shutdown_reason);
+                    logs_api::consume(&log_queue, &log_dest).await;
                     return Ok(());
                 }
             },
             Err(err) => {
-                println!("Error: {:?}", err);
-                log::consume(&log_queue, &log_dest).await;
+                log::debug!("Error: {:?}", err);
+                logs_api::consume(&log_queue, &log_dest).await;
             }
         }
     }
@@ -57,13 +59,15 @@ enum NextEventResponse {
     },
 }
 
-fn next_event(client: &reqwest::blocking::Client, ext_id: &String) -> Result<NextEventResponse> {
+async fn next_event(client: &reqwest::Client, ext_id: &String) -> Result<NextEventResponse> {
     let url = format!("{}/2020-01-01/extension/event/next", base_url().unwrap());
     let response: reqwest::Result<NextEventResponse> = client
         .get(&url)
         .header(EXTENSION_ID_HEADER, ext_id)
-        .send()?
-        .json();
+        .send()
+        .await?
+        .json()
+        .await;
 
     match response {
         Ok(data) => Ok(data),
