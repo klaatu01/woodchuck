@@ -113,14 +113,14 @@ workflows:
           name: build_loggly
           requires:
             - test
-          filters:
-            branches:
-              only:
-                - main
       - release_loggly:
           type: approval
           requires:
             - build_loggly
+          filters:
+            branches:
+              only:
+                - main
       - deploy:
           destination: loggly
           requires:
@@ -130,14 +130,14 @@ workflows:
           name: build_logzio
           requires:
             - test
-          filters:
-            branches:
-              only:
-                - main
       - release_logzio:
           type: approval
           requires:
             - build_logzio
+          filters:
+            branches:
+              only:
+                - main
       - deploy:
           destination: logzio
           requires:
