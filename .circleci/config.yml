@@ -117,14 +117,14 @@ workflows:
             branches:
               only:
                 - main
-      - release:
+      - release_loggly:
           type: approval
           requires:
             - build_loggly
       - deploy:
           destination: loggly
           requires:
-            - release
+            - release_loggly
       - build:
           destination: logzio
           name: build_logzio
@@ -134,11 +134,11 @@ workflows:
             branches:
               only:
                 - main
-      - release:
+      - release_logzio:
           type: approval
           requires:
             - build_logzio
       - deploy:
           destination: logzio
           requires:
-            - release
+            - release_logzio
