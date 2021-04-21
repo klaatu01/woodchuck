@@ -5,35 +5,20 @@ orbs:
 
 workdir: &workdir /tmp/woodchuck
 
-cache_key: &cache_key repo-cache-{{ .Branch }}-{{ .Revision }}
-
-save_extension_cache: &save_extension_cache
-  save_cache:
-    name: "Saving repository cache for {{ .Branch }} {{ .Revision }}"
-    key: *cache_key
-    paths:
-      - extensions
-
-restore_extension_cache: &restore_extension_cache
-  restore_cache:
-    keys:
-      - *cache_key
-
 commands:
-  deploy_extension_to_region:
+  deploy_destination_to_region:
     parameters:
       region:
         type: string
-      extension:
-        default: "woodchuck"
+      destination:
         type: string
     steps:
       - run:
-          name: deploy <<parameters.region>>
+          name: deploy <<parameters.region>> <<parameters.destination>>
           command: |
-            RESULT=$(aws lambda publish-layer-version --layer-name <<parameters.extension>> --zip-file "fileb://extensions.zip" --region <<parameters.region>>)
+            RESULT=$(aws lambda publish-layer-version --layer-name woodchuck_<<parameters.destination>> --zip-file "fileb://extensions.zip" --region <<parameters.region>>)
             VERSION=$(echo $RESULT | jq '.Version')
-            aws lambda add-layer-version-permission --layer-name <<parameters.extension>> --region <<parameters.region>> --statement-id "public-layer" --version-number $VERSION --action lambda:GetLayerVersion --principal '*'
+            aws lambda add-layer-version-permission --layer-name woodchuck_<<parameters.destination>> --region <<parameters.region>> --statement-id "public-layer" --version-number $VERSION --action lambda:GetLayerVersion --principal '*'
 
 jobs:
   test:
@@ -63,42 +48,62 @@ jobs:
           name: build
           command: |
             cargo build --features <<parameters.destination>> --release &&
-            mkdir extensions &&
-            cp target/x86_64-unknown-linux-musl/release/woodchuck extensions/woodchuck
-      - *save_extension_cache
+            mkdir destination_<<parameters.destination>> && 
+            mkdir destination_<<parameters.destination>>/extensions &&
+            cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>/extensions/woodchuck_<<parameters.destination>>
+      - save_cache:
+          name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
+          key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>
+          paths:
+            - destination_<<parameters.destination>>
 
   deploy:
     working_directory: *workdir
+    parameters:
+      destination:
+        type: string
     executor: aws-cli/default
     steps:
       - attach_workspace:
           at: *workdir
-      - *restore_extension_cache
+      - restore_cache:
+          keys:
+            - repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>
       - aws-cli/setup
       - run:
           name: package
           command: |
-            zip -r extensions.zip extensions
-      - deploy_extension_to_region:
+            zip -r extensions.zip destination_<<parameters.destination>>/extensions
+      - deploy_destination_to_region:
           region: "eu-west-1"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "eu-west-2"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "eu-west-3"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "eu-central-1"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "eu-north-1"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "us-east-1"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "us-west-1"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "us-west-2"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "us-east-2"
-      - deploy_extension_to_region:
+          destination: <<parameters.destination>>
+      - deploy_destination_to_region:
           region: "ca-central-1"
+          destination: <<parameters.destination>>
 
 workflows:
   workflow:
@@ -109,14 +114,32 @@ workflows:
           name: build_loggly
           requires:
             - test
+      - release_loggly:
+          type: approval
+          requires:
+            - build_loggly
           filters:
             branches:
               only:
                 - main
-      - release:
+      - deploy:
+          destination: loggly
+          requires:
+            - release_loggly
+      - build:
+          destination: logzio
+          name: build_logzio
+          requires:
+            - test
+      - release_logzio:
           type: approval
           requires:
-            - build_loggly
+            - build_logzio
+          filters:
+            branches:
+              only:
+                - main
       - deploy:
+          destination: logzio
           requires:
-            - release
+            - release_logzio

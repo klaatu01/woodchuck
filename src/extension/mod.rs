@@ -9,8 +9,17 @@ pub mod logs_api;
 pub mod runtime;
 
 pub const EXTENSION_HEADER_NAME: &str = "Lambda-Extension-Name";
-pub const EXTENSION_NAME: &str = "woodchuck";
 pub const EXTENSION_ID_HEADER: &str = "Lambda-Extension-Identifier";
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "loggly")] {
+        pub const EXTENSION_NAME: &str = "woodchuck_loggly";
+    } else if #[cfg(feature = "logzio")] {
+        pub const EXTENSION_NAME: &str = "woodchuck_logzio";
+    } else {
+        pub const EXTENSION_NAME: &str = "woodchuck";
+    }
+}
 
 pub fn base_url() -> Option<String> {
     match std::env::var("AWS_LAMBDA_RUNTIME_API") {
