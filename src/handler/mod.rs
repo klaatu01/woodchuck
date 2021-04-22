@@ -51,7 +51,6 @@ cfg_if::cfg_if! {
         mod logzio;
         pub fn get_default() -> Result<Handler> {
             let token = std::env::var("LOGZIO_TOKEN").unwrap();
-            let tag = std::env::var("LOGZIO_TYPE").unwrap();
             let host = std::env::var("LOGZIO_HOST").unwrap();
             let timeout: Option<u64> = match std::env::var("LOGZIO_TIMEOUT") {
                 Ok(data) => match data.parse() {
@@ -75,7 +74,6 @@ cfg_if::cfg_if! {
                 logzio::Logzio::builder()
                     .with_token(token)
                     .with_host(host)
-                    .with_tag(tag)
                     .with_timeout(timeout)
                     .with_parser(Parser)
                     .build()?,

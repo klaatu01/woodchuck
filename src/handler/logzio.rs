@@ -58,7 +58,6 @@ impl LogHandler for Logzio {
 
 pub struct LogzioBuilder {
     token: Option<String>,
-    tag: Option<String>,
     host: Option<String>,
     parser: Option<Parser>,
     timeout: Option<Duration>,
@@ -67,17 +66,11 @@ pub struct LogzioBuilder {
 impl LogzioBuilder {
     pub fn new() -> Self {
         LogzioBuilder {
-            tag: None,
             token: None,
             host: None,
             parser: None,
             timeout: None,
         }
-    }
-
-    pub fn with_tag(mut self, tag: String) -> Self {
-        self.tag = Some(tag);
-        self
     }
 
     pub fn with_host(mut self, host: String) -> Self {
@@ -106,7 +99,6 @@ impl LogzioBuilder {
     pub fn build(self) -> Result<Logzio> {
         match self {
             Self {
-                tag: Some(tag),
                 token: Some(token),
                 host: Some(host),
                 parser: Some(parser),
@@ -118,13 +110,12 @@ impl LogzioBuilder {
                 };
 
                 Ok(Logzio {
-                    url: format!("http://{}:8070/?token={}&type={}", host, token, tag),
+                    url: format!("http://{}:8070/?token={}&type=http-bulk", host, token),
                     parser,
                     client,
                 })
             }
             Self { token: None, .. } => Err(Error::msg("Token Required")),
-            Self { tag: None, .. } => Err(Error::msg("Tag Required")),
             Self { parser: None, .. } => Err(Error::msg("Parser Required")),
             Self { host: None, .. } => Err(Error::msg("Host Required")),
         }
