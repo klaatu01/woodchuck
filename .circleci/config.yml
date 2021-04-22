@@ -16,6 +16,7 @@ commands:
       - run:
           name: deploy <<parameters.region>> <<parameters.destination>>
           command: |
+            cd destination_<<parameters.destination>>
             RESULT=$(aws lambda publish-layer-version --layer-name woodchuck_<<parameters.destination>> --zip-file "fileb://extensions.zip" --region <<parameters.region>>)
             VERSION=$(echo $RESULT | jq '.Version')
             aws lambda add-layer-version-permission --layer-name woodchuck_<<parameters.destination>> --region <<parameters.region>> --statement-id "public-layer" --version-number $VERSION --action lambda:GetLayerVersion --principal '*'
