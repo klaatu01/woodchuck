@@ -1,4 +1,4 @@
-use crate::handler::LogHandler;
+use crate::handler::{LogHandler, DEFAULT_TIMEOUT};
 use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
 use anyhow::{ensure, Error, Result};
@@ -53,6 +53,10 @@ impl LogHandler for Logzio {
         );
 
         Ok(())
+    }
+
+    fn get_name(&self) -> &str {
+        "woodchuck_logzio"
     }
 }
 
@@ -120,4 +124,33 @@ impl LogzioBuilder {
             Self { host: None, .. } => Err(Error::msg("Host Required")),
         }
     }
+}
+
+pub fn build_default() -> Result<Logzio> {
+    let token = std::env::var("LOGZIO_TOKEN").unwrap();
+    let host = std::env::var("LOGZIO_HOST").unwrap();
+    let timeout: Option<u64> = match std::env::var("LOGZIO_TIMEOUT") {
+        Ok(data) => match data.parse() {
+            Ok(0) => {
+                println!("LOGZIO_TIMEOUT set to Infinite");
+                None
+            }
+            Ok(t) => {
+                println!("LOGZIO_TIMEOUT set to {}ms", &t);
+                Some(t)
+            }
+            Err(_) => {
+                println!("LOGZIO_TIMEOUT: Cannot be parsed from {}", data);
+                Some(DEFAULT_TIMEOUT)
+            }
+        },
+        Err(_) => Some(DEFAULT_TIMEOUT),
+    };
+
+    Ok(Logzio::builder()
+        .with_token(token)
+        .with_host(host)
+        .with_timeout(timeout)
+        .with_parser(Parser)
+        .build()?)
 }

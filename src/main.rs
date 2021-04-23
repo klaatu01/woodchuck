@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     let log_config = logs_api::LogSubscriptionConfig::default();
 
     log::debug!("Registering Extension...");
-    let ext_id = extension::register_extension(&client).await?;
+    let ext_id = extension::register_extension(log_dest.read().await.get_name(), &client).await?;
     log::debug!("Registered.");
 
     log::debug!("Starting Log Server...");

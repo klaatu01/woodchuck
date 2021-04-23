@@ -25,4 +25,11 @@ impl LogHandler for Custom {
         }
         Ok(())
     }
+    fn get_name(&self) -> &str {
+        "woodchuck"
+    }
+}
+
+pub fn build_default() -> Result<Custom> {
+    Ok(Custom::new(Parser))
 }
