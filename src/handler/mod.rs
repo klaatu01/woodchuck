@@ -1,10 +1,10 @@
 use crate::models::RawCloudWatchLog;
-use crate::parser::Parser;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+#[allow(dead_code)]
 pub const DEFAULT_TIMEOUT: u64 = 500;
 
 #[async_trait]
@@ -27,7 +27,7 @@ cfg_if::cfg_if! {
         use custom::build_default;
         #[cfg(test)]
         pub fn get_test_destination() -> Result<Handler> {
-            Ok(Arc::new(RwLock::new(custom::Custom::new(Parser))))
+            get_default()
         }
     }
 }
