@@ -23,7 +23,7 @@ pub async fn run(
                     shutdown_reason, ..
                 } => {
                     log::debug!("Exiting: {:?}", shutdown_reason);
-                    logs_api::consume(&log_queue, &log_dest).await;
+                    logs_api::consume_retry(&log_queue, &log_dest, 5, 50).await;
                     return Ok(());
                 }
             },
