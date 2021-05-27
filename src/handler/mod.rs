@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-const DEFAULT_TIMEOUT: u64 = 500;
+const DEFAULT_TIMEOUT: u64 = 1000;
 
 #[async_trait]
 pub trait LogHandler {

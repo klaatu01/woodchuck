@@ -3,7 +3,7 @@ use crate::models::{LogQueue, RawCloudWatchLog};
 use crate::handler::Handler;
 use reqwest::Client;
 use warp::{path, serve, Filter, Reply};
-use std::env;
+use std::{env, thread::sleep, time::Duration};
 
 const MAX_ITEMS_DEFAULT: u32 = 1000;
 const MAX_BYTES_DEFAULT: u32 = 262144; //This needs to be configurable with an envar;
@@ -101,20 +101,29 @@ fn with_log_queue(
     warp::any().map(move || log_queue.clone())
 }
 
-pub async fn consume(queue: &LogQueue, dest:&Handler) {
+pub async fn consume_retry(queue: &LogQueue, dest:&Handler, attempts: u64, sleep_ms: u64) {
+    for _ in 0..attempts {
+        if consume(queue, dest).await {
+            break;
+        }
+        sleep(Duration::from_millis(sleep_ms));
+    }
+}
+
+pub async fn consume(queue: &LogQueue, dest:&Handler) -> bool {
     let length = queue.read().await.len();
     match length
     {
-        0 => (),
+        0 => false,
         _ => {
             let split = queue.write().await.split_off(0).clone();
             match dest.read().await.handle_logs(split.clone()).await {
-                Ok(_) => (),
+                Ok(_) => true,
                 Err(e) => {
                     println!("ERROR {}", e.to_string());
                     println!("failed to send {}, appending back to queue",split.len());
                     queue.write().await.extend(split);
-                    ()
+                    false
                 },
             }
         }
