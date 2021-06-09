@@ -1,10 +1,12 @@
 use crate::models::RawCloudWatchLog;
-use crate::parser::Parser;
 use anyhow::Result;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+#[allow(unused)]
+use crate::parser::Parser;
+#[allow(dead_code)]
 const DEFAULT_TIMEOUT: u64 = 1000;
 
 #[async_trait]
@@ -14,29 +16,34 @@ pub trait LogHandler {
 
 pub type Handler = Arc<RwLock<dyn LogHandler + Sync + Send>>;
 
+#[allow(dead_code)]
+fn parse_timeout(name: &str, default: u64) -> Option<u64> {
+    match std::env::var(name) {
+        Ok(data) => match data.parse() {
+            Ok(0) => {
+                println!("{} set to Infinite", name);
+                None
+            }
+            Ok(t) => {
+                println!("{} set to {}ms", name, &t);
+                Some(t)
+            }
+            Err(_) => {
+                println!("{} Cannot be parsed from {}", name, data);
+                Some(default)
+            }
+        },
+        Err(_) => Some(default),
+    }
+}
+
 cfg_if::cfg_if! {
     if #[cfg(feature = "loggly")] {
         mod loggly;
         pub fn get_default() -> Result<Handler> {
             let token = std::env::var("LOGGLY_TOKEN").unwrap();
             let tag = std::env::var("LOGGLY_TAG").unwrap();
-            let timeout: Option<u64> = match std::env::var("LOGGLY_TIMEOUT") {
-                Ok(data) => match data.parse() {
-                    Ok(0) => {
-                        println!("LOGGLY_TIMEOUT set to Infinite");
-                        None
-                    }
-                    Ok(t) => {
-                        println!("LOGGLY_TIMEOUT set to {}ms", &t);
-                        Some(t)
-                    }
-                    Err(_) => {
-                        println!("LOGGLY_TIMEOUT: Cannot be parsed from {}", data);
-                        Some(DEFAULT_TIMEOUT)
-                    }
-                },
-                Err(_) => Some(DEFAULT_TIMEOUT),
-            };
+            let timeout: Option<u64> = parse_timeout("LOGGLY_TIMEOUT", DEFAULT_TIMEOUT);
 
             Ok(Arc::new(RwLock::new(
                 loggly::Loggly::builder()
@@ -52,23 +59,7 @@ cfg_if::cfg_if! {
         pub fn get_default() -> Result<Handler> {
             let token = std::env::var("LOGZIO_TOKEN").unwrap();
             let host = std::env::var("LOGZIO_HOST").unwrap();
-            let timeout: Option<u64> = match std::env::var("LOGZIO_TIMEOUT") {
-                Ok(data) => match data.parse() {
-                    Ok(0) => {
-                        println!("LOGZIO_TIMEOUT set to Infinite");
-                        None
-                    }
-                    Ok(t) => {
-                        println!("LOGZIO_TIMEOUT set to {}ms", &t);
-                        Some(t)
-                    }
-                    Err(_) => {
-                        println!("LOGZIO_TIMEOUT: Cannot be parsed from {}", data);
-                        Some(DEFAULT_TIMEOUT)
-                    }
-                },
-                Err(_) => Some(DEFAULT_TIMEOUT),
-            };
+            let timeout: Option<u64> = parse_timeout("LOGZIO_TIMEOUT", DEFAULT_TIMEOUT);
 
             Ok(Arc::new(RwLock::new(
                 logzio::Logzio::builder()
@@ -78,6 +69,13 @@ cfg_if::cfg_if! {
                     .with_parser(Parser)
                     .build()?,
             )))
+        }
+    } else if #[cfg(feature = "firehose")] {
+        mod firehose;
+        pub fn get_default() -> Result<Handler> {
+            let delivery_stream_name = std::env::var("FIREHOSE_NAME").unwrap();
+            let tag = std::env::var("FIREHOSE_TAG").unwrap();
+            Ok(Arc::new(RwLock::new(firehose::Firehose::new(delivery_stream_name, tag))))
         }
     } else {
         mod custom;
