@@ -9,6 +9,25 @@ mod python;
 #[derive(Debug, Copy, Clone)]
 pub struct Parser;
 
+fn contains_woodchuck_ignore(obj : &Value) -> bool {
+    match obj {
+        Value::Object(obj) => 
+            match obj.get("__WOODCHUCK_IGNORE__") {
+                Some(Value::Bool(true)) => true,
+                _ => false
+            },
+        _ => false
+    }
+}
+
+fn include_log(log: &Log) -> bool {
+    match log {
+        Log::Formatted(data) => 
+            !contains_woodchuck_ignore(data),
+        _ => true
+    }
+}
+
 impl Parser {
     pub fn parse(self, logs: Vec<RawCloudWatchLog>) -> Vec<Log> {
         logs.into_iter()
@@ -24,6 +43,7 @@ impl Parser {
                 _ => Err(Error::msg(format!("Expected String {}", log.record))),
             })
             .flatten()
+            .filter(include_log)
             .collect()
     }
 }
@@ -53,7 +73,7 @@ fn try_parse_cloudwatch_log(log: &RawCloudWatchLog) -> Result<Log> {
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use super::try_parse_cloudwatch_log;
+    use super::{try_parse_cloudwatch_log, include_log};
     use crate::models::{LogLevel, RawCloudWatchLog, Log};
 
     #[test]
@@ -136,5 +156,44 @@ mod tests {
         let input = RawCloudWatchLog { record: serde_json::Value::String("Bad log".to_string()), ..Default::default()};
         let output = try_parse_cloudwatch_log(&input);
         assert_eq!(output.is_err(), true);
+    }
+
+    #[test]
+    fn should_ignore_log_with_woodchuck_ignore_true() {
+        let input =
+            RawCloudWatchLog { 
+                record: serde_json::Value::String(
+                    "{ \"statusCode\": 200, \"__WOODCHUCK_IGNORE__\": true }".to_string(),
+                ) , ..Default::default()
+            };
+        let log = try_parse_cloudwatch_log(&input).unwrap();
+        
+        assert_eq!(include_log(&log), false);
+    }
+
+    #[test]
+    fn should_not_ignore_log_with_woodchuck_ignore_false() {
+        let input =
+            RawCloudWatchLog { 
+                record: serde_json::Value::String(
+                    "{ \"statusCode\": 200, \"__WOODCHUCK_IGNORE__\": false }".to_string(),
+                ) , ..Default::default()
+            };
+        let log = try_parse_cloudwatch_log(&input).unwrap();
+        
+        assert_eq!(include_log(&log), true);
+    }
+
+    #[test]
+    fn should_not_ignore_log_without_woodchuck_ignore() {
+        let input =
+            RawCloudWatchLog { 
+                record: serde_json::Value::String(
+                    "{ \"statusCode\": 200 }".to_string(),
+                ) , ..Default::default()
+            };
+        let log = try_parse_cloudwatch_log(&input).unwrap();
+        
+        assert_eq!(include_log(&log), true);
     }
 }
