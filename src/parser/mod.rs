@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn should_ignore_log() {
+    fn should_ignore_log_with_woodchuck_ignore_true() {
         let input =
             RawCloudWatchLog { 
                 record: serde_json::Value::String(
@@ -169,5 +169,31 @@ mod tests {
         let log = try_parse_cloudwatch_log(&input).unwrap();
         
         assert_eq!(include_log(&log), false);
+    }
+
+    #[test]
+    fn should_not_ignore_log_with_woodchuck_ignore_false() {
+        let input =
+            RawCloudWatchLog { 
+                record: serde_json::Value::String(
+                    "{ \"statusCode\": 200, \"__WOODCHUCK_IGNORE__\": false }".to_string(),
+                ) , ..Default::default()
+            };
+        let log = try_parse_cloudwatch_log(&input).unwrap();
+        
+        assert_eq!(include_log(&log), true);
+    }
+
+    #[test]
+    fn should_not_ignore_log_without_woodchuck_ignore() {
+        let input =
+            RawCloudWatchLog { 
+                record: serde_json::Value::String(
+                    "{ \"statusCode\": 200 }".to_string(),
+                ) , ..Default::default()
+            };
+        let log = try_parse_cloudwatch_log(&input).unwrap();
+        
+        assert_eq!(include_log(&log), true);
     }
 }
