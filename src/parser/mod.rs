@@ -6,13 +6,15 @@ mod dotnet;
 mod node;
 mod python;
 
+pub const WOODCHUCK_IGNORE_KEY: &str = "__WOODCHUCK_IGNORE__";
+
 #[derive(Debug, Copy, Clone)]
 pub struct Parser;
 
-fn contains_woodchuck_ignore(obj : &Value) -> bool {
+fn json_contains_key_in_root(key: &str, obj : &Value) -> bool {
     match obj {
         Value::Object(obj) => 
-            match obj.get("__WOODCHUCK_IGNORE__") {
+            match obj.get(&key.to_string()) {
                 Some(Value::Bool(true)) => true,
                 _ => false
             },
@@ -23,7 +25,7 @@ fn contains_woodchuck_ignore(obj : &Value) -> bool {
 fn include_log(log: &Log) -> bool {
     match log {
         Log::Formatted(data) => 
-            !contains_woodchuck_ignore(data),
+            !json_contains_key_in_root(WOODCHUCK_IGNORE_KEY, data),
         _ => true
     }
 }
