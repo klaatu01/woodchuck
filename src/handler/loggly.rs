@@ -3,6 +3,7 @@ use crate::models::RawCloudWatchLog;
 use crate::parser::Parser;
 use anyhow::{ensure, Error, Result};
 use async_trait::async_trait;
+use byte_chunk::SafeByteChunkedMut;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 use std::time::Duration;
@@ -18,18 +19,9 @@ impl Loggly {
     pub fn builder() -> LogglyBuilder {
         LogglyBuilder::new()
     }
-}
 
-#[async_trait]
-impl LogHandler for Loggly {
-    async fn handle_logs(&self, cloudwatch_logs: Vec<RawCloudWatchLog>) -> Result<()> {
-        let logs = self.parser.parse(cloudwatch_logs);
-
-        let payload: String = logs
-            .iter()
-            .map(|log| log.to_string())
-            .collect::<Vec<String>>()
-            .join("\n");
+    async fn send_logs(&self, logs: &[String]) -> Result<()> {
+        let payload: String = logs.join("\n");
 
         log::debug!(
             "Sending {} logs to Loggly, payload length: {}",
@@ -51,6 +43,27 @@ impl LogHandler for Loggly {
             res.status() == reqwest::StatusCode::OK,
             "Error Sending Logs"
         );
+
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl LogHandler for Loggly {
+    async fn handle_logs(&self, cloudwatch_logs: Vec<RawCloudWatchLog>) -> Result<()> {
+        let logs = self.parser.parse(cloudwatch_logs);
+
+        let mut stringified_logs = logs
+            .iter()
+            .map(|log| log.to_string())
+            .collect::<Vec<String>>();
+
+        let chunks = stringified_logs.byte_chunks_safe_mut(4900000); //give ourselves 100kb overhead to be safe.
+
+        for (index, chunk) in chunks.enumerate() {
+            self.send_logs(chunk).await?;
+            log::debug!("Sent Chunk {} of {} items.", index, chunk.len());
+        }
 
         Ok(())
     }
