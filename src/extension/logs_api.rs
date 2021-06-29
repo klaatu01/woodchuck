@@ -6,8 +6,9 @@ use warp::{path, serve, Filter, Reply};
 use std::{env, thread::sleep, time::Duration};
 
 const MAX_ITEMS_DEFAULT: u32 = 1000;
-const MAX_BYTES_DEFAULT: u32 = 262144; //This needs to be configurable with an envar;
-const TIMEOUT_DEFAULT: u32 = 5000; //This shouldnt need to be this high anymore as we are accepting logs async now;
+const MAX_BYTES_DEFAULT: u32 = 262144;
+const TIMEOUT_DEFAULT: u32 = 500; 
+
 const PORT_DEFAULT: u16 = 1060;
 const HOST_DEFAULT: &str = "sandbox";
 
@@ -134,7 +135,9 @@ async fn handle_log(
     logs: Vec<RawCloudWatchLog>,
     log_queue: LogQueue,
 ) -> Result<impl Reply, std::convert::Infallible> {
+    log::debug!("Adding {} logs", logs.len());
     log_queue.write().await.append(&mut logs.clone());
+    log::debug!("Added {} logs", logs.len());
     Ok(warp::reply())
 }
 
