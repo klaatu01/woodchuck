@@ -58,7 +58,6 @@ fn log_subscription_request(config: &LogSubscriptionConfig) -> serde_json::Value
                 }},
                 \"types\": 
                 [
-                    \"platform\", 
                     \"function\"
                 ],
                 \"buffering\": 
