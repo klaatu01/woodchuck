@@ -11,6 +11,7 @@ use std::time::Duration;
 pub struct Loggly {
     url: String,
     client: Client,
+    max_log_attempts: usize,
 }
 
 impl Loggly {
@@ -53,7 +54,8 @@ impl Loggly {
 #[async_trait]
 impl LogHandler for Loggly {
     async fn handle_logs(&self, logs: Vec<Log>) -> LogHandlerResponse {
-        let mut local_logs = logs.to_owned();
+        let mut local_logs: Vec<Log> = logs.to_owned();
+
         let chunks = local_logs.byte_chunks_safe_mut(4900000); //give ourselves 100kb overhead to be safe.
 
         let mut failed_to_send_logs = Vec::<Log>::new();
@@ -69,6 +71,12 @@ impl LogHandler for Loggly {
                 _ => log::debug!("Sent Chunk {} with {} items.", index, chunk.len()),
             }
         }
+
+        failed_to_send_logs
+            .iter_mut()
+            .for_each(|log| log.attempts += 1);
+
+        failed_to_send_logs.retain(|log| log.attempts < self.max_log_attempts);
 
         match failed_to_send_logs.len() {
             0 => Ok(()),
@@ -125,6 +133,7 @@ impl LogglyBuilder {
                 Ok(Loggly {
                     url: format!("http://logs-01.loggly.com/bulk/{}/tag/{}/", token, tag),
                     client,
+                    max_log_attempts: 3,
                 })
             }
             Self { token: None, .. } => Err(Error::msg("Token Required")),
