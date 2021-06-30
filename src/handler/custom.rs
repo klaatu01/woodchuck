@@ -1,26 +1,21 @@
-use crate::handler::LogHandler;
-use crate::models::RawCloudWatchLog;
-use crate::parser::Parser;
+use crate::handler::{LogHandler, LogHandlerResponse};
+use crate::models::Log;
 use anyhow::Result;
 use async_trait::async_trait;
 
 #[derive(Debug, Clone)]
-pub struct Custom {
-    parser: Parser,
-}
+pub struct Custom;
 
 impl Custom {
-    pub fn new(parser: Parser) -> Self {
-        Custom { parser }
+    pub fn new() -> Self {
+        Custom {}
     }
 }
 
 #[async_trait]
 impl LogHandler for Custom {
-    async fn handle_logs(&self, logs: Vec<RawCloudWatchLog>) -> Result<()> {
-        log::debug!("PARSED = {:?}", &logs);
-        let nd_logs = self.parser.parse(logs);
-        for log in nd_logs.into_iter() {
+    async fn handle_logs(&self, logs: Vec<Log>) -> LogHandlerResponse {
+        for log in logs.iter() {
             log::debug!("PARSED = {:?}", log);
         }
         Ok(())
