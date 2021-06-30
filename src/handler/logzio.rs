@@ -1,4 +1,4 @@
-use crate::handler::LogHandler;
+use crate::handler::{LogHandler, LogHandlerResponse};
 use crate::models::Log;
 use anyhow::{ensure, Error, Result};
 use async_trait::async_trait;
@@ -52,7 +52,7 @@ impl Logzio {
 
 #[async_trait]
 impl LogHandler for Logzio {
-    async fn handle_logs(&self, logs: Vec<Log>) -> (Result<()>, Vec<Log>) {
+    async fn handle_logs(&self, logs: Vec<Log>) -> LogHandlerResponse {
         let mut local_logs = logs.to_owned();
         let chunks = local_logs.byte_chunks_safe_mut(4900000); //give ourselves 100kb overhead to be safe.
 
@@ -70,7 +70,10 @@ impl LogHandler for Logzio {
             }
         }
 
-        (Ok(()), failed_to_send_logs)
+        match failed_to_send_logs.len() {
+            0 => Ok(()),
+            _ => Err(failed_to_send_logs.into()),
+        }
     }
 }
 

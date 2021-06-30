@@ -1,6 +1,6 @@
 use super::{base_url,ExtensionId, EXTENSION_ID_HEADER};
 use crate::models::{LogQueue, RawCloudWatchLog};
-use crate::handler::Handler;
+use crate::handler::{Handler, FailedToSendLogsError};
 use reqwest::Client;
 use warp::{path, serve, Filter, Reply};
 use std::{env, thread::sleep, time::Duration};
@@ -119,11 +119,10 @@ pub async fn consume(queue: &LogQueue, dest:&Handler) -> bool {
         _ => {
             let split = queue.write().await.split_off(0);
             match dest.read().await.handle_logs(split).await {
-                (Ok(_), _) => true,
-                (Err(e), failed_to_send_logs) => {
-                    println!("ERROR {}", e.to_string());
-                    println!("failed to send {}, appending back to queue",failed_to_send_logs.len());
-                    queue.write().await.extend(failed_to_send_logs);
+                Ok(_) => true,
+                Err(FailedToSendLogsError{logs}) => {
+                    println!("failed to send {}, appending back to queue",logs.len());
+                    queue.write().await.extend(logs);
                     false
                 },
             }

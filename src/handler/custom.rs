@@ -1,4 +1,4 @@
-use crate::handler::LogHandler;
+use crate::handler::{LogHandler, LogHandlerResponse};
 use crate::models::Log;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -14,10 +14,10 @@ impl Custom {
 
 #[async_trait]
 impl LogHandler for Custom {
-    async fn handle_logs(&self, logs: Vec<Log>) -> (Result<()>, Vec<Log>) {
+    async fn handle_logs(&self, logs: Vec<Log>) -> LogHandlerResponse {
         for log in logs.iter() {
             log::debug!("PARSED = {:?}", log);
         }
-        (Ok(()), Vec::new())
+        Ok(())
     }
 }

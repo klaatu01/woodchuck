@@ -6,9 +6,22 @@ use tokio::sync::RwLock;
 
 const DEFAULT_TIMEOUT: u64 = 1000;
 
+#[derive(Debug)]
+pub struct FailedToSendLogsError {
+    pub logs: Vec<Log>,
+}
+
+impl From<Vec<Log>> for FailedToSendLogsError {
+    fn from(logs: Vec<Log>) -> Self {
+        FailedToSendLogsError { logs }
+    }
+}
+
+pub type LogHandlerResponse = Result<(), FailedToSendLogsError>;
+
 #[async_trait]
 pub trait LogHandler {
-    async fn handle_logs(&self, logs: Vec<Log>) -> (Result<()>, Vec<Log>);
+    async fn handle_logs(&self, logs: Vec<Log>) -> LogHandlerResponse;
 }
 
 pub type Handler = Arc<RwLock<dyn LogHandler + Sync + Send>>;
