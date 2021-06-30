@@ -3,7 +3,7 @@ use crate::models::{Log, RawCloudWatchLog};
 pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
     match &log.record {
         serde_json::Value::String(record) => match serde_json::from_str(&record) {
-            Ok(data) => Some(Log::Formatted(data)),
+            Ok(data) => Some(Log::new(data)),
             Err(_) => None,
         },
         _ => None,
@@ -29,10 +29,13 @@ mod tests {
         let output = parse(&input);
 
         assert_eq!(output.is_some(), true);
-        match output.unwrap() {
-            Log::Formatted(log) => {
-                assert_eq!(log["statusCode"], 200);
-                assert_eq!(log["body"], "DotNet");
+        match output {
+            Some(Log {
+                record,
+                attempts: _,
+            }) => {
+                assert_eq!(record["statusCode"], 200);
+                assert_eq!(record["body"], "DotNet");
             }
             _ => {
                 panic!("Expected Preformatted log");

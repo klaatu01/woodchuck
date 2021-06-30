@@ -1,4 +1,4 @@
-use crate::models::{Log, LogLevel, RawCloudWatchLog, StructuredLog};
+use crate::models::{Log, RawCloudWatchLog};
 use recap::Recap;
 use serde::Deserialize;
 
@@ -19,33 +19,16 @@ struct PythonCloudWatchLog {
     data: String,
 }
 
-impl Into<StructuredLog> for PythonCloudWatchLog {
-    fn into(self) -> StructuredLog {
-        StructuredLog {
-            timestamp: Some(self.timestamp),
-            guid: Some(self.guid),
-            level: match self.level.as_str() {
-                "[INFO]" => Some(LogLevel::Info),
-                "[WARNING]" => Some(LogLevel::Warn),
-                "[ERROR]" => Some(LogLevel::Error),
-                _ => None,
-            },
-            data: match serde_json::from_str(&self.data) {
-                Ok(value) => value,
-                Err(_) => serde_json::to_value(&self.data).unwrap(),
-            },
-        }
-    }
-}
-
 pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
     match &log.record {
-        serde_json::Value::String(record) => {
-            match record.parse() as Result<PythonCloudWatchLog, _> {
-                Ok(l) => Some(Log::Unformatted(l.into())),
+        serde_json::Value::String(record) => match record.parse() as Result<PythonCloudWatchLog, _>
+        {
+            Ok(l) => match serde_json::from_str(&l.data) {
+                Ok(value) => Some(Log::new(value)),
                 Err(_) => None,
-            }
-        }
+            },
+            _ => None,
+        },
         _ => None,
     }
 }
@@ -56,10 +39,9 @@ mod tests {
     use super::parse;
     use super::Log;
     use super::RawCloudWatchLog;
-    use crate::models::LogLevel;
 
     #[test]
-    fn test_parse_python() {
+    fn test_parse_python_non_json() {
         let input = RawCloudWatchLog {
             record: serde_json::Value::String(
                 "[INFO]	2019-10-23T14:40:59.59Z	313e0588-e4f1-4d19-8ae4-44980a446805	Hello World\n"
@@ -69,16 +51,30 @@ mod tests {
         };
         let output = parse(&input);
 
+        assert!(output.is_none());
+    }
+
+    #[test]
+    fn test_parse_python_json() {
+        let input = RawCloudWatchLog {
+            record: serde_json::Value::String(
+                "[INFO]	2019-10-23T14:40:59.59Z	313e0588-e4f1-4d19-8ae4-44980a446805	{\"data\":\"Hello World\"}\n"
+                    .to_string(),
+            ),
+            ..Default::default()
+        };
+        let output = parse(&input);
+
         assert_eq!(output.is_some(), true);
-        match output.unwrap() {
-            Log::Unformatted(log) => {
-                assert_eq!(log.timestamp.unwrap(), "2019-10-23T14:40:59.59Z");
-                assert_eq!(log.guid.unwrap(), "313e0588-e4f1-4d19-8ae4-44980a446805");
-                assert_eq!(log.level.unwrap(), LogLevel::Info);
-                assert_eq!(log.data, "Hello World\n");
+        match output {
+            Some(Log {
+                record,
+                attempts: _,
+            }) => {
+                assert_eq!(record["data"], "Hello World");
             }
             _ => {
-                panic!("Expected CloudWatch Formatted log");
+                panic!("Expected Preformatted log");
             }
         }
     }

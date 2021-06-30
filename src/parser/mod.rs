@@ -49,29 +49,27 @@ fn try_parse_cloudwatch_log(log: &RawCloudWatchLog) -> Result<Log> {
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::try_parse_cloudwatch_log;
-    use crate::models::{LogLevel, RawCloudWatchLog, Log};
+    use crate::models::{RawCloudWatchLog, Log};
 
     #[test]
     fn can_parse_node() {
         let input =
             RawCloudWatchLog { 
                 record:
-            serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\tHello World\n".to_string())
+            serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\t{ \"statusCode\": 200, \"body\": \"Node\" }\n".to_string())
                 , ..Default::default()
             };
         let output = try_parse_cloudwatch_log(&input);
 
         assert_eq!(output.is_ok(), true);
 
-        match output.unwrap() {
-            Log::Unformatted(log) => {
-                assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
-                assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
-                assert_eq!(log.level.unwrap(), LogLevel::Info);
-                assert_eq!(log.data, "Hello World\n");
-            },
+        match output {
+            Ok (Log { record, attempts }) => {
+                assert_eq!(record["body"], "Node");
+                assert_eq!(record["statusCode"], 200);
+            }
             _ => {
-                panic!("Expected Cloudwatch formatted log");
+                panic!("Failed to parse log");
             }
         }
     }
@@ -80,7 +78,7 @@ mod tests {
     fn can_parse_python() {
         let input = RawCloudWatchLog {
             record: serde_json::Value::String(
-                "[INFO]	2020-11-18T23:52:30.128Z    6e48723a-1596-4313-a9af-e4da9214d637	Hello World\n"
+                "[INFO]	2020-11-18T23:52:30.128Z    6e48723a-1596-4313-a9af-e4da9214d637	{ \"statusCode\": 200, \"body\": \"Python\" }\n"
                     .to_string(),
             ),
             ..Default::default()
@@ -89,15 +87,13 @@ mod tests {
 
         assert_eq!(output.is_ok(), true);
 
-        match output.unwrap() {
-            Log::Unformatted(log) => {
-                assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
-                assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
-                assert_eq!(log.level.unwrap(), LogLevel::Info);
-                assert_eq!(log.data, "Hello World\n");
-            },
+        match output {
+            Ok (Log { record, attempts }) => {
+                assert_eq!(record["body"], "Python");
+                assert_eq!(record["statusCode"], 200);
+            }
             _ => {
-                panic!("Expected Cloudwatch formatted log");
+                panic!("Failed to parse log");
             }
         }
     }
@@ -115,13 +111,13 @@ mod tests {
 
         assert_eq!(output.is_ok(), true);
 
-        match output.unwrap() {
-            Log::Formatted(log) => {
-                assert_eq!(log["body"], "DotNet");
-                assert_eq!(log["statusCode"], 200);
+        match output {
+            Ok (Log { record, attempts }) => {
+                assert_eq!(record["body"], "DotNet");
+                assert_eq!(record["statusCode"], 200);
             }
             _ => {
-                panic!("Expected Preformatted log");
+                panic!("Failed to parse log");
             }
         }
     }

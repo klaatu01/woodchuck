@@ -1,4 +1,4 @@
-use crate::models::{LogLevel, StructuredLog, Log, RawCloudWatchLog};
+use crate::models::{Log, RawCloudWatchLog};
 use recap::Recap;
 use serde::Deserialize;
 
@@ -19,34 +19,14 @@ struct NodeCloudWatchLog {
     data: String,
 }
 
-impl Into<StructuredLog> for NodeCloudWatchLog {
-    fn into(self) -> StructuredLog {
-        StructuredLog {
-            timestamp: Some(self.timestamp),
-            guid: Some(self.guid),
-            level: match self.level.as_str() {
-                "INFO" => Some(LogLevel::Info),
-                "WARN" => Some(LogLevel::Warn),
-                "ERROR" => Some(LogLevel::Error),
-                _ => None,
-            },
-            data: match serde_json::from_str(&self.data) {
-                Ok(value) => value,
-                Err(_) => serde_json::to_value(&self.data).unwrap(),
-            },
-        }
-    }
-}
-
 pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
     match &log.record {
         serde_json::Value::String(record) => 
             match record.parse() as Result<NodeCloudWatchLog, _> {
                 Ok(l) => {
-                    let structured_log: StructuredLog = l.into();
-                    match structured_log.data {
-                        serde_json::Value::Object(_) => Some(Log::Formatted(structured_log.data)),
-                        _ => Some(Log::Unformatted(structured_log)),
+                    match serde_json::from_str(&l.data) {
+                        Ok(value) => Some(Log::new(value)),
+                        Err(_) => None,
                     }
                 },
                 _ => None
@@ -58,7 +38,7 @@ pub fn parse(log: &RawCloudWatchLog) -> Option<Log> {
 #[cfg(test)]
 mod tests {
     // Note this useful idiom: importing names from outer (for mod tests) scope.
-    use crate::models::{Log,LogLevel, RawCloudWatchLog};
+    use crate::models::{Log, RawCloudWatchLog};
     use super::parse;
 
     #[test]
@@ -71,26 +51,7 @@ mod tests {
             };
         let output = parse(&input);
 
-        assert_eq!(output.is_some(), true);
-
-
-        match output.unwrap() {
-            Log::Unformatted(log) => {
-                assert_eq!(
-                    log.timestamp.unwrap(),
-                    "2020-11-18T23:52:30.128Z"
-                );
-                assert_eq!(
-                    log.guid.unwrap(),
-                    "6e48723a-1596-4313-a9af-e4da9214d637"
-                );
-                assert_eq!(log.level.unwrap(), LogLevel::Info);
-                assert_eq!(log.data, "Hello World\n");
-            },
-            _ => {
-                panic!("Expected Preformatted log");
-            }
-        }
+        assert!(output.is_none());
     }
 
     #[test]
@@ -105,13 +66,9 @@ mod tests {
 
         assert_eq!(output.is_some(), true);
 
-        let l = output.unwrap();
-
-        println!("{}", l.to_string());
-
-        match l {
-            Log::Formatted(log) => {
-                assert_eq!(log["data"], "Hello World");
+        match output {
+            Some (Log { record, attempts:_ } )=> {
+                assert_eq!(record["data"], "Hello World");
             },
             _ => {
                 panic!("Expected Preformatted log");
