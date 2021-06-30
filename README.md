@@ -1,3 +1,6 @@
+# Example:
+[![CircleCI](https://circleci.com/gh/klaatu01/woodchuck.svg?style=svg)](https://circleci.com/gh/klaatu01/woodchuck)
+
 # Woodchuck
 
 _How many Logs would a Woodchuck chuck if a would chuck could chuck Logs?_
