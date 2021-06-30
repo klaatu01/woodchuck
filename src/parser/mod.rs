@@ -6,26 +6,21 @@ mod dotnet;
 mod node;
 mod python;
 
-#[derive(Debug, Copy, Clone)]
-pub struct Parser;
-
-impl Parser {
-    pub fn parse(self, logs: Vec<RawCloudWatchLog>) -> Vec<Log> {
-        logs.into_iter()
-            .filter(|log| match log.r#type.as_str() {
-                "function" => true,
-                _ => {
-                    println!("{:?}", log);
-                    false
-                }
-            })
-            .map(|log| match log.record {
-                Value::String(_) => try_parse_cloudwatch_log(&log),
-                _ => Err(Error::msg(format!("Expected String {}", log.record))),
-            })
-            .flatten()
-            .collect()
-    }
+pub fn parse(logs: Vec<RawCloudWatchLog>) -> Vec<Log> {
+    logs.into_iter()
+        .filter(|log| match log.r#type.as_str() {
+            "function" => true,
+            _ => {
+                println!("{:?}", log);
+                false
+            }
+        })
+        .map(|log| match log.record {
+            Value::String(_) => try_parse_cloudwatch_log(&log),
+            _ => Err(Error::msg(format!("Expected String {}", log.record))),
+        })
+        .flatten()
+        .collect()
 }
 
 fn try_parse_cloudwatch_log(log: &RawCloudWatchLog) -> Result<Log> {

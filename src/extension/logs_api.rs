@@ -4,6 +4,7 @@ use crate::handler::Handler;
 use reqwest::Client;
 use warp::{path, serve, Filter, Reply};
 use std::{env, thread::sleep, time::Duration};
+use crate::parser::parse;
 
 const MAX_ITEMS_DEFAULT: u32 = 1000;
 const MAX_BYTES_DEFAULT: u32 = 262144;
@@ -116,13 +117,13 @@ pub async fn consume(queue: &LogQueue, dest:&Handler) -> bool {
     {
         0 => false,
         _ => {
-            let split = queue.write().await.split_off(0).clone();
-            match dest.read().await.handle_logs(split.clone()).await {
-                Ok(_) => true,
-                Err(e) => {
+            let split = queue.write().await.split_off(0);
+            match dest.read().await.handle_logs(split).await {
+                (Ok(_), _) => true,
+                (Err(e), failed_to_send_logs) => {
                     println!("ERROR {}", e.to_string());
-                    println!("failed to send {}, appending back to queue",split.len());
-                    queue.write().await.extend(split);
+                    println!("failed to send {}, appending back to queue",failed_to_send_logs.len());
+                    queue.write().await.extend(failed_to_send_logs);
                     false
                 },
             }
@@ -135,7 +136,7 @@ async fn handle_log(
     log_queue: LogQueue,
 ) -> Result<impl Reply, std::convert::Infallible> {
     log::debug!("Adding {} logs", logs.len());
-    log_queue.write().await.append(&mut logs.clone());
+    log_queue.write().await.append(&mut parse(logs.clone()));
     log::debug!("Added {} logs", logs.len());
     Ok(warp::reply())
 }
@@ -144,19 +145,24 @@ async fn handle_log(
 mod tests {
     use super::RawCloudWatchLog;
     use crate::models::new_log_queue;
-    use super::consume;
+    use super::{consume, handle_log};
     #[tokio::test]
     async fn consume_log() {
         //Arrange
         let queue = new_log_queue();
         let dest = crate::handler::get_test_destination().unwrap();
-        queue.write().await.push(
-            RawCloudWatchLog { 
+        let rslt = handle_log(
+            vec![RawCloudWatchLog { 
                 record:
             serde_json::Value::String("2020-11-18T23:52:30.128Z\t6e48723a-1596-4313-a9af-e4da9214d637\tINFO\tHello World\n".to_string())
                 , ..Default::default()
-            }
-        );
+            }], queue.clone()
+        ).await;
+
+        match rslt {
+            Ok(_) => assert!(true),
+            Err(e) => assert!(false, e),
+        };
         //Act
         consume(&queue,&dest).await;
 

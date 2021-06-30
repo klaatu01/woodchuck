@@ -115,9 +115,9 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "byte_chunk"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13d806769adb1fdd952ca677aea6b3a6243e5f08a02e96e78b1aa671a81b787c"
+checksum = "fa9c0fee943551a5b063ababfa909e42e950cc9cbb89baeaf143c558a6551871"
 dependencies = [
  "bytes 1.0.1",
 ]

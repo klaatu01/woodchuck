@@ -1,8 +1,8 @@
 use crate::handler::LogHandler;
-use crate::models::RawCloudWatchLog;
-use crate::parser::Parser;
+use crate::models::Log;
 use anyhow::{ensure, Error, Result};
 use async_trait::async_trait;
+use byte_chunk::SafeByteChunkedMut;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Client;
 use std::time::Duration;
@@ -10,7 +10,6 @@ use std::time::Duration;
 #[derive(Debug, Clone)]
 pub struct Logzio {
     url: String,
-    parser: Parser,
     client: Client,
 }
 
@@ -18,21 +17,16 @@ impl Logzio {
     pub fn builder() -> LogzioBuilder {
         LogzioBuilder::new()
     }
-}
 
-#[async_trait]
-impl LogHandler for Logzio {
-    async fn handle_logs(&self, cloudwatch_logs: Vec<RawCloudWatchLog>) -> Result<()> {
-        let logs = self.parser.parse(cloudwatch_logs);
-
+    async fn send_logs(&self, logs: &[Log]) -> Result<()> {
         let payload: String = logs
             .iter()
-            .map(|log| log.to_string())
+            .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join("\n");
 
         log::debug!(
-            "Sending {} logs to Logzio, payload length: {}",
+            "Sending {} logs, payload length: {}",
             &logs.len(),
             &payload.len()
         );
@@ -56,10 +50,33 @@ impl LogHandler for Logzio {
     }
 }
 
+#[async_trait]
+impl LogHandler for Logzio {
+    async fn handle_logs(&self, logs: Vec<Log>) -> (Result<()>, Vec<Log>) {
+        let mut local_logs = logs.to_owned();
+        let chunks = local_logs.byte_chunks_safe_mut(4900000); //give ourselves 100kb overhead to be safe.
+
+        let mut failed_to_send_logs = Vec::<Log>::new();
+
+        for (index, chunk) in chunks.enumerate() {
+            let rslt = self.send_logs(chunk).await;
+            match rslt {
+                Err(e) => {
+                    log::debug!("Failed sending Chunk {} with {} items.", index, chunk.len());
+                    failed_to_send_logs.extend_from_slice(chunk);
+                    log::error!("{}", e)
+                }
+                _ => log::debug!("Sent Chunk {} with {} items.", index, chunk.len()),
+            }
+        }
+
+        (Ok(()), failed_to_send_logs)
+    }
+}
+
 pub struct LogzioBuilder {
     token: Option<String>,
     host: Option<String>,
-    parser: Option<Parser>,
     timeout: Option<Duration>,
 }
 
@@ -68,7 +85,6 @@ impl LogzioBuilder {
         LogzioBuilder {
             token: None,
             host: None,
-            parser: None,
             timeout: None,
         }
     }
@@ -80,11 +96,6 @@ impl LogzioBuilder {
 
     pub fn with_token(mut self, token: String) -> Self {
         self.token = Some(token);
-        self
-    }
-
-    pub fn with_parser(mut self, parser: Parser) -> Self {
-        self.parser = Some(parser);
         self
     }
 
@@ -101,7 +112,6 @@ impl LogzioBuilder {
             Self {
                 token: Some(token),
                 host: Some(host),
-                parser: Some(parser),
                 timeout: _,
             } => {
                 let client = match self.timeout {
@@ -111,12 +121,10 @@ impl LogzioBuilder {
 
                 Ok(Logzio {
                     url: format!("http://{}:8070/?token={}&type=http-bulk", host, token),
-                    parser,
                     client,
                 })
             }
             Self { token: None, .. } => Err(Error::msg("Token Required")),
-            Self { parser: None, .. } => Err(Error::msg("Parser Required")),
             Self { host: None, .. } => Err(Error::msg("Host Required")),
         }
     }
