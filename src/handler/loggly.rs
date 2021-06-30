@@ -61,8 +61,14 @@ impl LogHandler for Loggly {
         let chunks = stringified_logs.byte_chunks_safe_mut(4900000); //give ourselves 100kb overhead to be safe.
 
         for (index, chunk) in chunks.enumerate() {
-            self.send_logs(chunk).await?;
-            log::debug!("Sent Chunk {} of {} items.", index, chunk.len());
+            let rslt = self.send_logs(chunk).await?;
+            match rslt {
+                Error(e) => {
+                    log::debug!("Failed sending Chunk {} with {} items.", index, chunk.len());
+                    log::error!("{}", e)
+                }
+                _ => log::debug!("Sent Chunk {} with {} items.", index, chunk.len()),
+            }
         }
 
         Ok(())

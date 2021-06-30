@@ -7,7 +7,7 @@ use std::{env, thread::sleep, time::Duration};
 
 const MAX_ITEMS_DEFAULT: u32 = 1000;
 const MAX_BYTES_DEFAULT: u32 = 262144;
-const TIMEOUT_DEFAULT: u32 = 500; 
+const TIMEOUT_DEFAULT: u32 = 2500; 
 
 const PORT_DEFAULT: u16 = 1060;
 const HOST_DEFAULT: &str = "sandbox";
@@ -103,7 +103,7 @@ fn with_log_queue(
 
 pub async fn consume_retry(queue: &LogQueue, dest:&Handler, attempts: u64, sleep_ms: u64) {
     for _ in 0..attempts {
-        if consume(queue, dest).await {
+        if consume(queue, dest).await == true {
             break;
         }
         sleep(Duration::from_millis(sleep_ms));
