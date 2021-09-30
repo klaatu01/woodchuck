@@ -52,6 +52,7 @@ jobs:
       - run:
           name: build
           command: |
+            ls &&
             ./build.sh <<parameters.destination>> <<parameters.arch>>
       - save_cache:
           name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
