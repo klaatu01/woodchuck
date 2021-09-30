@@ -53,7 +53,7 @@ jobs:
             cargo build --features "<<parameters.destination>>" --release
             mkdir destination_<<parameters.destination>>_<<parameters>> && 
             mkdir destination_<<parameters.destination>>_<<parameters>>/extensions &&
-            cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
+            cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>_<<parameters.arch>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
       - save_cache:
           name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
           key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
@@ -79,7 +79,7 @@ jobs:
             cargo build --features "<<parameters.destination>> <<parameters.arch>>" --release
             mkdir destination_<<parameters.destination>>_<<parameters>> && 
             mkdir destination_<<parameters.destination>>_<<parameters>>/extensions &&
-            cp target/aarch64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
+            cp target/aarch64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>_<<parameters.arch>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
       - save_cache:
           name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
           key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
