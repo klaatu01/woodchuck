@@ -36,12 +36,10 @@ jobs:
           name: test
           command: |
             cargo test
-  build:
+  build_x86_64:
     working_directory: *workdir
     parameters:
       destination:
-        type: string
-      arch:
         type: string
     docker:
       - image: ekidd/rust-musl-builder:latest
@@ -52,13 +50,43 @@ jobs:
       - run:
           name: build
           command: |
-            ls &&
-            ./build.sh <<parameters.destination>> <<parameters.arch>>
+            cargo build --features "<<parameters.destination>>" --release
+            mkdir destination_<<parameters.destination>>_<<parameters>> && 
+            mkdir destination_<<parameters.destination>>_<<parameters>>/extensions &&
+            cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
       - save_cache:
           name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
           key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
           paths:
             - destination_<<parameters.destination>>_<<parameters.arch>>
+            - package.sh
+            - deploy.sh
+
+  build_arm64:
+    working_directory: *workdir
+    parameters:
+      destination:
+        type: string
+    docker:
+      - image: messense/rust-musl-cross:aarch64-musl
+    steps:
+      - attach_workspace:
+          at: *workdir
+      - checkout
+      - run:
+          name: build
+          command: |
+            cargo build --features "<<parameters.destination>> <<parameters.arch>>" --release
+            mkdir destination_<<parameters.destination>>_<<parameters>> && 
+            mkdir destination_<<parameters.destination>>_<<parameters>>/extensions &&
+            cp target/aarch64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
+      - save_cache:
+          name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
+          key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
+          paths:
+            - destination_<<parameters.destination>>_<<parameters.arch>>
+            - package.sh
+            - deploy.sh
 
   deploy:
     working_directory: *workdir
@@ -124,7 +152,7 @@ workflows:
   workflow:
     jobs:
       - test
-      - build:
+      - build_x86_64:
           destination: loggly
           arch: x86_64
           name: build_loggly_x86_64
@@ -143,7 +171,7 @@ workflows:
           arch: x86_64
           requires:
             - release_loggly_x86_64
-      - build:
+      - build_x86_64:
           destination: logzio
           arch: x86_64
           name: build_logzio_x86_64
@@ -162,7 +190,7 @@ workflows:
           arch: x86_64
           requires:
             - release_logzio_x86_64
-      - build:
+      - build_arm64:
           destination: loggly
           arch: arm64
           name: build_loggly_arm64
@@ -181,7 +209,7 @@ workflows:
           arch: arm64
           requires:
             - release_loggly_arm64
-      - build:
+      - build_arm64:
           destination: logzio
           arch: arm64
           name: build_logzio_arm64
