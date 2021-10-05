@@ -12,14 +12,16 @@ commands:
         type: string
       destination:
         type: string
+      arch:
+        type: string
     steps:
       - run:
-          name: deploy <<parameters.region>> <<parameters.destination>>
+          name: deploy <<parameters.region>> <<parameters.destination>> <<parameters.arch>>
           command: |
             cd destination_<<parameters.destination>>
-            RESULT=$(aws lambda publish-layer-version --layer-name woodchuck_<<parameters.destination>> --zip-file "fileb://extensions.zip" --region <<parameters.region>>)
+            RESULT=$(aws lambda publish-layer-version --layer-name woodchuck_<<parameters.destination>>_<<parameters.arch>> --zip-file "fileb://extensions.zip" --region <<parameters.region>>)
             VERSION=$(echo $RESULT | jq '.Version')
-            aws lambda add-layer-version-permission --layer-name woodchuck_<<parameters.destination>> --region <<parameters.region>> --statement-id "public-layer" --version-number $VERSION --action lambda:GetLayerVersion --principal '*'
+            aws lambda add-layer-version-permission --layer-name woodchuck_<<parameters.destination>>_<<parameters.arch>> --region <<parameters.region>> --statement-id "public-layer" --version-number $VERSION --action lambda:GetLayerVersion --principal '*'
 
 jobs:
   test:
@@ -34,10 +36,12 @@ jobs:
           name: test
           command: |
             cargo test
-  build:
+  build_x86_64:
     working_directory: *workdir
     parameters:
       destination:
+        type: string
+      arch:
         type: string
     docker:
       - image: ekidd/rust-musl-builder:latest
@@ -48,20 +52,52 @@ jobs:
       - run:
           name: build
           command: |
-            cargo build --features <<parameters.destination>> --release &&
-            mkdir destination_<<parameters.destination>> && 
-            mkdir destination_<<parameters.destination>>/extensions &&
-            cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>/extensions/woodchuck_<<parameters.destination>>
+            cargo build --features "<<parameters.destination>>" --release
+            mkdir destination_<<parameters.destination>>_<<parameters.arch>> && 
+            mkdir destination_<<parameters.destination>>_<<parameters.arch>>/extensions &&
+            cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>_<<parameters.arch>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
       - save_cache:
           name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
-          key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>
+          key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
           paths:
-            - destination_<<parameters.destination>>
+            - destination_<<parameters.destination>>_<<parameters.arch>>
+            - package.sh
+            - deploy.sh
+
+  build_arm64:
+    working_directory: *workdir
+    parameters:
+      destination:
+        type: string
+      arch:
+        type: string
+    docker:
+      - image: messense/rust-musl-cross:aarch64-musl
+    steps:
+      - attach_workspace:
+          at: *workdir
+      - checkout
+      - run:
+          name: build
+          command: |
+            cargo build --features "<<parameters.destination>> <<parameters.arch>>" --release
+            mkdir destination_<<parameters.destination>>_<<parameters.arch>> && 
+            mkdir destination_<<parameters.destination>>_<<parameters.arch>>/extensions &&
+            cp target/aarch64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>_<<parameters.arch>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>
+      - save_cache:
+          name: "Saving repository cache for {{ .Branch }} {{ .Revision }} <<parameters.destination>>"
+          key: repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
+          paths:
+            - destination_<<parameters.destination>>_<<parameters.arch>>
+            - package.sh
+            - deploy.sh
 
   deploy:
     working_directory: *workdir
     parameters:
       destination:
+        type: string
+      arch:
         type: string
     executor: aws-cli/default
     steps:
@@ -69,79 +105,130 @@ jobs:
           at: *workdir
       - restore_cache:
           keys:
-            - repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>
+            - repo-cache-{{ .Branch }}-{{ .Revision }}-<<parameters.destination>>_<<parameters.arch>>
       - aws-cli/setup
       - run:
           name: package
           command: |
-            cd destination_<<parameters.destination>>
-            zip -r extensions.zip extensions
+            ./package.sh
       - deploy_destination_to_region:
           region: "eu-west-1"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "eu-west-2"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "eu-west-3"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "eu-central-1"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "eu-north-1"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "us-east-1"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "us-west-1"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "us-west-2"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "us-east-2"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "ca-central-1"
           destination: <<parameters.destination>>
+          arch: <<parameters.arch>>
 
 workflows:
   workflow:
     jobs:
       - test
-      - build:
+      - build_x86_64:
           destination: loggly
-          name: build_loggly
+          arch: x86_64
+          name: build_loggly_x86_64
           requires:
             - test
-      - release_loggly:
+      - release_loggly_x86_64:
           type: approval
           requires:
-            - build_loggly
+            - build_loggly_x86_64
           filters:
             branches:
               only:
                 - main
       - deploy:
           destination: loggly
+          arch: x86_64
           requires:
-            - release_loggly
-      - build:
+            - release_loggly_x86_64
+      - build_x86_64:
           destination: logzio
-          name: build_logzio
+          arch: x86_64
+          name: build_logzio_x86_64
           requires:
             - test
-      - release_logzio:
+      - release_logzio_x86_64:
           type: approval
           requires:
-            - build_logzio
+            - build_logzio_x86_64
           filters:
             branches:
               only:
                 - main
       - deploy:
           destination: logzio
+          arch: x86_64
           requires:
-            - release_logzio
+            - release_logzio_x86_64
+      - build_arm64:
+          destination: loggly
+          arch: arm64
+          name: build_loggly_arm64
+          requires:
+            - test
+      - release_loggly_arm64:
+          type: approval
+          requires:
+            - build_loggly_arm64
+          filters:
+            branches:
+              only:
+                - main
+      - deploy:
+          destination: loggly
+          arch: arm64
+          requires:
+            - release_loggly_arm64
+      - build_arm64:
+          destination: logzio
+          arch: arm64
+          name: build_logzio_arm64
+          requires:
+            - test
+      - release_logzio_arm64:
+          type: approval
+          requires:
+            - build_logzio_arm64
+          filters:
+            branches:
+              only:
+                - main
+      - deploy:
+          destination: logzio
+          arch: arm64
+          requires:
+            - release_logzio_arm64

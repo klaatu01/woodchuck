@@ -13,9 +13,23 @@ pub const EXTENSION_ID_HEADER: &str = "Lambda-Extension-Identifier";
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "loggly")] {
-        pub const EXTENSION_NAME: &str = "woodchuck_loggly";
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "arm64")] {
+                pub const EXTENSION_NAME: &str = "woodchuck_loggly_arm64";
+            }
+            else {
+                pub const EXTENSION_NAME: &str = "woodchuck_loggly_x86_64";
+            }
+        }
     } else if #[cfg(feature = "logzio")] {
-        pub const EXTENSION_NAME: &str = "woodchuck_logzio";
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "arm64")] {
+                pub const EXTENSION_NAME: &str = "woodchuck_logzio_arm64";
+            }
+            else {
+                pub const EXTENSION_NAME: &str = "woodchuck_logzio_x86_64";
+            }
+        }
     } else {
         pub const EXTENSION_NAME: &str = "woodchuck";
     }
