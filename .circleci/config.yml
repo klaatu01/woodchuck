@@ -110,7 +110,7 @@ jobs:
       - run:
           name: package
           command: |
-            ./package.sh
+            ./package.sh <<parameters.destination>> <<parameters.arch>>
       - deploy_destination_to_region:
           region: "eu-west-1"
           destination: <<parameters.destination>>
