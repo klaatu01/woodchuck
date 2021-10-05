@@ -119,23 +119,11 @@ jobs:
           destination: <<parameters.destination>>
           arch: <<parameters.arch>>
       - deploy_destination_to_region:
-          region: "eu-west-3"
-          destination: <<parameters.destination>>
-          arch: <<parameters.arch>>
-      - deploy_destination_to_region:
           region: "eu-central-1"
           destination: <<parameters.destination>>
           arch: <<parameters.arch>>
       - deploy_destination_to_region:
-          region: "eu-north-1"
-          destination: <<parameters.destination>>
-          arch: <<parameters.arch>>
-      - deploy_destination_to_region:
           region: "us-east-1"
-          destination: <<parameters.destination>>
-          arch: <<parameters.arch>>
-      - deploy_destination_to_region:
-          region: "us-west-1"
           destination: <<parameters.destination>>
           arch: <<parameters.arch>>
       - deploy_destination_to_region:
@@ -144,10 +132,6 @@ jobs:
           arch: <<parameters.arch>>
       - deploy_destination_to_region:
           region: "us-east-2"
-          destination: <<parameters.destination>>
-          arch: <<parameters.arch>>
-      - deploy_destination_to_region:
-          region: "ca-central-1"
           destination: <<parameters.destination>>
           arch: <<parameters.arch>>
 
