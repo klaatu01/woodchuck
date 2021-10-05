@@ -12,5 +12,8 @@ fi
 
 destination="destination_$1_$2"
 
-zip -r extensions.zip $destination/extensions &&
+cd $destination
+zip -r extensions.zip extensions &&
+mv extensions.zip ../
+cd ..
 rm -r $destination
