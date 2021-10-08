@@ -9,20 +9,20 @@ if [ -d $2 ]; then
   exit 1
 fi
 
-
-destination="destination_$1_$2"
 woodchuck_name="woodchuck_$1_$2"
 
-mkdir $destination
-mkdir $destination/extensions
+mkdir extensions
 
 case $2 in
   "x86_64")
     docker run --rm -it -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder cargo build --features "$1" --release && 
-    cp target/x86_64-unknown-linux-musl/release/woodchuck $destination/extensions/$woodchuck_name
+    cp target/x86_64-unknown-linux-musl/release/woodchuck extensions/$woodchuck_name
     ;;
   "arm64")
     docker run --rm -it -v "$(pwd)":/home/rust/src messense/rust-musl-cross:aarch64-musl cargo build --features "$1 $2" --release && 
-    cp target/aarch64-unknown-linux-musl/release/woodchuck $destination/extensions/$woodchuck_name
+    cp target/aarch64-unknown-linux-musl/release/woodchuck extensions/$woodchuck_name
     ;;
 esac
+
+zip -r extensions.zip extensions
+rm -rf extensions

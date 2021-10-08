@@ -109,7 +109,11 @@ jobs:
       - run:
           name: package
           command: |
-            ./package.sh <<parameters.destination>> <<parameters.arch>>
+            cd destination_<<parameters.destination>>_<<parameters.arch>> &&
+            zip -r extensions.zip extensions &&
+            mv extensions.zip ../ &&
+            cd .. &&
+            rm -rf destination_<<parameters.destination>>_<<parameters.arch>>
       - deploy_destination_to_region:
           region: "eu-west-1"
           destination: <<parameters.destination>>
