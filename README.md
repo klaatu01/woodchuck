@@ -29,7 +29,7 @@ Currently Supported Log Destinations:
 
 ## Serverless Framework
 
-If you are using the Serverless Framework checkout the official [plugin](github.com/klaatu01/serverless-plugin-woodchuck).
+If you are using the Serverless Framework checkout the official [plugin](https://github.com/klaatu01/serverless-plugin-woodchuck).
 
 ## Prebuilt Layers
 
