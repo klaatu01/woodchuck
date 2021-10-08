@@ -5,18 +5,7 @@
 
 _How many Logs would a Woodchuck chuck if a would chuck could chuck Logs?_
 
-AWS Lambda External Extension for Parsing/Forwarding CloudWatch Logs to Loggly.
-
-## Installation MacOS - optional
-
-Dependencies:
- - [docker](https://github.com/docker/cli)
- - [aws-cli](https://github.com/aws/aws-cli)
- 
-```bash
-./build.sh && ./deploy.sh
-```
-_Builds inside of a docker mirror of the AWS Lambda provided runtime as outlined [here](https://github.com/awslabs/aws-lambda-rust-runtime)_
+AWS Lambda External Extension for Forwarding CloudWatch Logs to Supported Logging Platforms.
 
 ## Support
 
@@ -36,13 +25,45 @@ Currently Supported Runtimes:
 
 Currently Supported Log Destinations:
 * [x] Loggly
-* [ ] More...
+* [x] Logzio
 
-## Usage
+## Serverless Framework
 
-Add the layer to your lambda and set environment variables for LOGGLY_TOKEN & LOGGLY_TAG:
+If you are using the Serverless Framework checkout the official [plugin](github.com/klaatu01/serverless-plugin-woodchuck).
 
-_I will insert the publicly accessable ARN of the Layer once v1 is ready for release_
+## Prebuilt Layers
+
+Provided you are in using any of the following AWS Regions:
+  - eu-west-1
+  - eu-west-2
+  - eu-central-1
+  - us-east-1
+  - us-east-2
+  - us-west-2
+
+There are some premade layers avaliable for each Destination and Architecture:
+  - arn:aws:lambda:<region>:856198688143:layer:woodchuck_loggly_x86_64
+  - arn:aws:lambda:<region>:856198688143:layer:woodchuck_logzio_x86_64
+  - arn:aws:lambda:<region>:856198688143:layer:woodchuck_loggly_arm64
+  - arn:aws:lambda:<region>:856198688143:layer:woodchuck_logzio_arm64
+
+## Building from source
+
+If your organisation does not want to use one of the premade layers. Woodchuck can be built from source for your desired `destination (loggly|logzio)` and `architecture (x86_64|arm64)`
+
+### Dependencies
+ - [docker](https://github.com/docker/cli): To compile the plugin on the target Architecture.
+ - [aws-cli](https://github.com/aws/aws-cli): To deploy the layer to your AWS Account.
+ 
+### Building:
+```bash
+./build.sh <loggly|logzio> <x86_64|arm64>
+```
+
+### Publishing:
+```bash
+./publish.sh <loggly|logzio> <x86_64|arm64> <region>
+```
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
