@@ -8,30 +8,38 @@ pub type ExtensionId = String;
 pub mod logs_api;
 pub mod runtime;
 
+pub const EXTENSION_NAME: &str = "woodchuck";
 pub const EXTENSION_HEADER_NAME: &str = "Lambda-Extension-Name";
 pub const EXTENSION_ID_HEADER: &str = "Lambda-Extension-Identifier";
 
 cfg_if::cfg_if! {
+    if #[cfg(feature = "arm64")] {
+        const TARGET_ARCHITECTURE: Option<&str> = Some("arm64");
+    }
+    else if #[cfg(feature = "x86_64")] {
+        const TARGET_ARCHITECTURE: Option<&str> = Some("x86_64");
+    }
+    else {
+        const TARGET_ARCHITECTURE: Option<&str> = None;
+    }
+}
+
+cfg_if::cfg_if! {
     if #[cfg(feature = "loggly")] {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "arm64")] {
-                pub const EXTENSION_NAME: &str = "woodchuck_loggly_arm64";
-            }
-            else {
-                pub const EXTENSION_NAME: &str = "woodchuck_loggly_x86_64";
-            }
-        }
-    } else if #[cfg(feature = "logzio")] {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "arm64")] {
-                pub const EXTENSION_NAME: &str = "woodchuck_logzio_arm64";
-            }
-            else {
-                pub const EXTENSION_NAME: &str = "woodchuck_logzio_x86_64";
-            }
-        }
-    } else {
-        pub const EXTENSION_NAME: &str = "woodchuck";
+        const TARGET_DESTINATION: Option<&str> = Some("loggly");
+    }
+    else if #[cfg(feature = "logzio")] {
+        const TARGET_DESTINATION: Option<&str> = Some("logzio");
+    }
+    else {
+        const TARGET_DESTINATION: Option<&str> = None;
+    }
+}
+
+pub fn get_extension_name() -> String {
+    match (TARGET_ARCHITECTURE, TARGET_DESTINATION) {
+        (Some(arch), Some(dest)) => format!("{}_{}_{}", EXTENSION_NAME, dest, arch),
+        (_, _) => EXTENSION_NAME.to_string(),
     }
 }
 
@@ -48,7 +56,7 @@ pub async fn register_extension(client: &Client) -> Result<ExtensionId> {
     let url = format!("{}/2020-01-01/extension/register", base_url().unwrap());
     let res = client
         .post(&url)
-        .header(EXTENSION_HEADER_NAME, EXTENSION_NAME)
+        .header(EXTENSION_HEADER_NAME, get_extension_name())
         .json(&map)
         .send()
         .await?;
