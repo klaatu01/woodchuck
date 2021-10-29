@@ -37,9 +37,16 @@ cfg_if::cfg_if! {
 }
 
 pub fn get_extension_name() -> String {
-    match (TARGET_ARCHITECTURE, TARGET_DESTINATION) {
+    let name = match (TARGET_ARCHITECTURE, TARGET_DESTINATION) {
         (Some(arch), Some(dest)) => format!("{}_{}_{}", EXTENSION_NAME, dest, arch),
         (_, _) => EXTENSION_NAME.to_string(),
+    };
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "dev")] {
+            name + "_dev"
+        } else {
+            name
+        }
     }
 }
 
