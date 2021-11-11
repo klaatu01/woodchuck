@@ -11,11 +11,11 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "0.2.22", features = ["macros", "sync"] }
+tokio = { version = "1.13", features = ["macros", "sync"] }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0" 
-reqwest = { version = "0.10.8", features = ["rustls","blocking", "json"] }
+reqwest = { version = "0.11.6", features = ["rustls","blocking", "json"] }
 warp = "0.2.5"
 futures = "0.3.8"
 regex = "1.4.2"
@@ -26,11 +26,14 @@ async-trait = "0.1.42"
 cfg-if = "1.0.0"
 byte_chunk = "0.1.1"
 openssl = { version = "0.10", features = ["vendored"] }
+rusoto_core = "0.47.0"
+rusoto_firehose = "0.47.0"
 
 [features]
 local = []
 loggly = []
 logzio = []
+firehose = []
 arm64 = []
 x86_64 = []
 dev = []
