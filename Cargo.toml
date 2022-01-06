@@ -28,6 +28,7 @@ byte_chunk = "0.1.1"
 openssl = { version = "0.10", features = ["vendored"] }
 rusoto_core = "0.47.0"
 rusoto_firehose = "0.47.0"
+base64 = "0.13.0"
 
 [features]
 local = []

@@ -31,6 +31,9 @@ cfg_if::cfg_if! {
     else if #[cfg(feature = "logzio")] {
         const TARGET_DESTINATION: Option<&str> = Some("logzio");
     }
+    else if #[cfg(feature = "firehose")] {
+        const TARGET_DESTINATION: Option<&str> = Some("firehose");
+    }
     else {
         const TARGET_DESTINATION: Option<&str> = None;
     }

@@ -149,7 +149,7 @@ mod tests {
     async fn consume_log() {
         //Arrange
         let queue = new_log_queue();
-        let dest = crate::handler::get_test_destination().unwrap();
+        let dest = crate::handler::get_default().unwrap();
         let rslt = handle_log(
             vec![RawCloudWatchLog { 
                 record:
