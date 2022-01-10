@@ -15,7 +15,7 @@ use reqwest::Client;
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    log::debug!("Building {} Client", extension::EXTENSION_NAME);
+    log::debug!("Building {} Client", extension::get_extension_name());
     let client = Client::builder().build()?;
     log::debug!("Built Client");
     let log_queue = models::new_log_queue();

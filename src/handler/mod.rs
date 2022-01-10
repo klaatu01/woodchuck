@@ -89,13 +89,18 @@ cfg_if::cfg_if! {
                     .build()?,
             )))
         }
+    } else if #[cfg(feature = "firehose")] {
+        mod firehose;
+        pub fn get_default() -> Result<Handler> {
+            let stream = std::env::var("WOODHUCK_FIREHOSE_TARGET").unwrap();
+            let metadata = serde_json::from_str((std::env::var("WOODHUCK_FIREHOSE_METADATA")?).as_ref())?;
+            Ok(Arc::new(RwLock::new(
+                firehose::Firehose::new(stream, metadata)
+            )))
+        }
     } else {
         mod custom;
         pub fn get_default() -> Result<Handler> {
-            Ok(Arc::new(RwLock::new(custom::Custom::new())))
-        }
-        #[cfg(test)]
-        pub fn get_test_destination() -> Result<Handler> {
             Ok(Arc::new(RwLock::new(custom::Custom::new())))
         }
     }
