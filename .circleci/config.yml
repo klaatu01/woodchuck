@@ -51,7 +51,7 @@ jobs:
       - run:
           name: build
           command: |
-            cargo build --features "<<parameters.destination>>" --release
+            cargo build --features "<<parameters.destination>> <<parameters.arch>>" --release
             mkdir destination_<<parameters.destination>>_<<parameters.arch>> && 
             mkdir destination_<<parameters.destination>>_<<parameters.arch>>/extensions &&
             cp target/x86_64-unknown-linux-musl/release/woodchuck destination_<<parameters.destination>>_<<parameters.arch>>/extensions/woodchuck_<<parameters.destination>>_<<parameters.arch>>

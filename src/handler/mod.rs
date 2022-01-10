@@ -92,8 +92,8 @@ cfg_if::cfg_if! {
     } else if #[cfg(feature = "firehose")] {
         mod firehose;
         pub fn get_default() -> Result<Handler> {
-            let stream = std::env::var("WOODHUCK_FIREHOSE_TARGET").unwrap();
-            let metadata = serde_json::from_str((std::env::var("WOODHUCK_FIREHOSE_METADATA")?).as_ref())?;
+            let stream = std::env::var("WOODCHUCK_FIREHOSE_TARGET").unwrap();
+            let metadata = serde_json::from_str((std::env::var("WOODCHUCK_FIREHOSE_METADATA")?).as_ref())?;
             Ok(Arc::new(RwLock::new(
                 firehose::Firehose::new(stream, metadata)
             )))
