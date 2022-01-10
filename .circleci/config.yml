@@ -162,6 +162,7 @@ workflows:
           arch: x86_64
           requires:
             - release_loggly_x86_64
+
       - build_x86_64:
           destination: logzio
           arch: x86_64
@@ -181,6 +182,7 @@ workflows:
           arch: x86_64
           requires:
             - release_logzio_x86_64
+
       - build_arm64:
           destination: loggly
           arch: arm64
@@ -200,6 +202,7 @@ workflows:
           arch: arm64
           requires:
             - release_loggly_arm64
+              
       - build_arm64:
           destination: logzio
           arch: arm64
@@ -219,3 +222,43 @@ workflows:
           arch: arm64
           requires:
             - release_logzio_arm64
+
+      - build_x86_64:
+          destination: firehose
+          arch: x86_64
+          name: build_firehose_x86_64
+          requires:
+            - test
+      - release_firehose_x86_64:
+          type: approval
+          requires:
+            - build_firehose_x86_64
+          filters:
+            branches:
+              only:
+                - main
+      - deploy:
+          destination: firehose
+          arch: x86_64
+          requires:
+            - release_firehose_x86_64
+
+      - build_arm64:
+          destination: firehose
+          arch: arm64
+          name: build_firehose_arm64
+          requires:
+            - test
+      - release_firehose_arm64:
+          type: approval
+          requires:
+            - build_firehose_arm64
+          filters:
+            branches:
+              only:
+                - main
+      - deploy:
+          destination: firehose
+          arch: arm64
+          requires:
+            - release_firehose_arm64
