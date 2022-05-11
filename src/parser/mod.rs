@@ -3,6 +3,7 @@ use anyhow::{Error, Result};
 use serde_json::Value;
 
 mod dotnet;
+mod dotnet_six;
 mod node;
 mod python;
 
@@ -37,6 +38,12 @@ fn try_parse_cloudwatch_log(log: &RawCloudWatchLog) -> Result<Log> {
         _ => (),
     };
     match dotnet::parse(log) {
+        Some(dto) => {
+            return Ok(dto);
+        }
+        _ => (),
+    };
+    match dotnet_six::parse(log) {
         Some(dto) => {
             return Ok(dto);
         }
@@ -119,6 +126,33 @@ mod tests {
             Log::Formatted(log) => {
                 assert_eq!(log["body"], "DotNet");
                 assert_eq!(log["statusCode"], 200);
+            }
+            _ => {
+                panic!("Expected Preformatted log");
+            }
+        }
+    }
+
+    #[test]
+    fn can_parse_dotnet_six() {
+        let input = RawCloudWatchLog {
+            record: serde_json::Value::String(
+                "2020-11-18T23:52:30.128Z  6e48723a-1596-4313-a9af-e4da9214d637	 info  { \"statusCode\": 200, \"body\": \"DotNet\" }".to_string(),
+            ),
+            time: "2020-11-18T23:52:30.128Z".to_string(),
+            ..Default::default()
+        };
+        let output = try_parse_cloudwatch_log(&input);
+
+        assert!(output.is_ok());
+
+        match output.unwrap() {
+            Log::Unformatted(log) => {
+                assert_eq!(log.timestamp.unwrap(), "2020-11-18T23:52:30.128Z");
+                assert_eq!(log.guid.unwrap(), "6e48723a-1596-4313-a9af-e4da9214d637");
+                assert_eq!(log.level.unwrap(), LogLevel::Info);
+                assert_eq!(log.data["body"], "DotNet");
+                assert_eq!(log.data["statusCode"], 200);
             }
             _ => {
                 panic!("Expected Preformatted log");
