@@ -3,6 +3,7 @@ use anyhow::{Error, Result};
 use serde_json::Value;
 
 mod dotnet;
+mod dotnet_six;
 mod node;
 mod python;
 
@@ -37,6 +38,12 @@ fn try_parse_cloudwatch_log(log: &RawCloudWatchLog) -> Result<Log> {
         _ => (),
     };
     match dotnet::parse(log) {
+        Some(dto) => {
+            return Ok(dto);
+        }
+        _ => (),
+    };
+    match dotnet_six::parse(log) {
         Some(dto) => {
             return Ok(dto);
         }
