@@ -35,6 +35,12 @@ pub enum LogLevel {
     Warn,
     #[serde(rename(serialize = "ERROR"))]
     Error,
+    #[serde(rename(serialize = "TRACE"))]
+    Trace,
+    #[serde(rename(serialize = "CRITICAL"))]
+    Critical,
+    #[serde(rename(serialize = "DEBUG"))]
+    Debug,
 }
 
 impl TryFrom<String> for LogLevel {
@@ -44,6 +50,9 @@ impl TryFrom<String> for LogLevel {
             "INFO" => Ok(LogLevel::Info),
             "WARN" => Ok(LogLevel::Warn),
             "ERROR" => Ok(LogLevel::Error),
+            "TRACE" => Ok(LogLevel::Trace),
+            "CRITICAL" => Ok(LogLevel::Critical),
+            "DEBUG" => Ok(LogLevel::Debug),
             _ => Err(Error::msg(format!("Unable to parse {} as LogLevel", level))),
         }
     }

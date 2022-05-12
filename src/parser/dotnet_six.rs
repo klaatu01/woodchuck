@@ -8,7 +8,7 @@ use serde::Deserialize;
     \s+
     (?P<guid>[0-9A-Fa-f]{8}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{4}[-][0-9A-Fa-f]{12})
     \s+
-    (?P<level>(info)|(warn)|(error))
+    (?P<level>(info)|(warn)|(fail)|(trce)|(dbug)|(crit))
     \s+
     (?P<data>(?s).*)
   "#)]
@@ -27,7 +27,10 @@ impl Into<StructuredLog> for DotnetSixCloudWatchLog {
             level: match self.level.as_str() {
                 "info" => Some(LogLevel::Info),
                 "warn" => Some(LogLevel::Warn),
-                "error" => Some(LogLevel::Error),
+                "fail" => Some(LogLevel::Error),
+                "crit" => Some(LogLevel::Critical),
+                "dbug" => Some(LogLevel::Debug),
+                "trce" => Some(LogLevel::Trace),
                 _ => None,
             },
             data: match serde_json::from_str(&self.data) {
@@ -69,7 +72,7 @@ mod tests {
         };
         let output = parse(&input);
 
-        assert_eq!(output.is_some(), true);
+        assert!(output.is_some());
         match output.unwrap() {
             Log::Unformatted(log) => {
                 assert_eq!(log.timestamp.unwrap(), "2019-10-23T14:40:59.59Z");
